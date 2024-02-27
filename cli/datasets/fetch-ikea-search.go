@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mpvl/unique"
+	// "github.com/mpvl/unique"
 )
 
 type Category struct {
@@ -63,7 +63,8 @@ func fetchProducsByCategory(categoryId string) {
 	var responseJson map[string]interface{}
 	json.Unmarshal(body, &responseJson)
 
-	err = os.WriteFile("./products/"+categoryId+".json", body, 0644)
+	// TODO refactor path to constant, maybe in a separate file
+	err = os.WriteFile("./json-output/products/"+categoryId+".json", body, 0644)
 
 	if err != nil {
 		fmt.Println("Error: ", err)
