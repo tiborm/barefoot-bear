@@ -21,9 +21,8 @@ type Category struct {
 func getSubsInDepth(categories []Category, ids *[]string) *[]string {
 	for _, category := range categories {
 		fmt.Println(category.Id)
-		if category.Subs == nil {
-			*ids = append(*ids, category.Id)
-		} else {
+		*ids = append(*ids, category.Id)
+		if category.Subs != nil {
 			getSubsInDepth(category.Subs, ids)
 		}
 	}
@@ -63,7 +62,10 @@ func fetchProducsByCategory(categoryId string) {
 	var responseJson map[string]interface{}
 	json.Unmarshal(body, &responseJson)
 
-	// TODO refactor path to constant, maybe in a separate file
+	// TODO Fetch only if file yet not exists (state sync is not a concern)
+	// TODO Add logging
+	// TODO separate fetching and writing to file
+	// TODO refactor path to constant, maybe in a separate file	
 	err = os.WriteFile("./json-output/products/"+categoryId+".json", body, 0644)
 
 	if err != nil {
