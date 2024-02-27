@@ -1,5 +1,7 @@
 package searchtemplate
 
+const Url = "https://sik.search.blue.cdtapps.com/gb/en/search?c=listaf&v=20240110"
+
 var SearchJSONTemplate = []byte(`{
     "searchParameters": {
         "input": "59308",
