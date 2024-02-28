@@ -38,14 +38,12 @@ func FetchProducsByCategory(categoryId string) {
 		os.Exit(1)
 	}
 
-	var responseJson map[string]interface{}
-	json.Unmarshal(body, &responseJson)
-
 	// TODO Fetch only if file yet not exists (state sync is not a concern)
 	// TODO Add logging
 	// TODO separate fetching and writing to file
 	// TODO refactor path to constant, maybe in a separate file	
-	err = os.WriteFile("./json-output/products/"+categoryId+".json", body, 0644)
+	// TODO add folder path to config
+	err = os.WriteFile("./json/products/"+categoryId+".json", body, 0644)
 
 	if err != nil {
 		fmt.Println("Error: ", err)
