@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	"github.com/tiborm/barefoot-bear/cmd/fetchdata/internal/categories"
-	"github.com/tiborm/barefoot-bear/cmd/fetchdata/internal/fetchproducts"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/categories"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/products"
 )
 
 
@@ -22,9 +22,10 @@ func main() {
 	// unique.Strings(catIds)
 	// Out of 1504 categories, 23 are unique? That's not right
 
-	// TODO filer ids with / character
+	// TODO filter ids with / character
 
 	for _, catId := range *catIds {
+		// TODO: make the sleep time configurable
 		time.Sleep(6 * time.Second) // Sleep for 6 seconds to avoid rate limiting
 		fetchproducts.FetchProducsByCategory(catId)
 	}

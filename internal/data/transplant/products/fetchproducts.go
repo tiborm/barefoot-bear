@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/tiborm/barefoot-bear/cmd/fetchdata/internal/searchtemplate"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
 )
 
 func FetchProducsByCategory(categoryId string) {
@@ -38,7 +38,7 @@ func FetchProducsByCategory(categoryId string) {
 		os.Exit(1)
 	}
 
-	// TODO Fetch only if file yet not exists (state sync is not a concern)
+	// TODO Fetch only if file yet not exists (state sync is not a concern), force synd from config
 	// TODO Add logging
 	// TODO separate fetching and writing to file
 	// TODO refactor path to constant, maybe in a separate file	
