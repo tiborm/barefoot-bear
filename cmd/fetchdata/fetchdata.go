@@ -10,7 +10,8 @@ import (
 
 
 func main() {
-	catIds := categories.ReadCategoriesFromFile("categories.json")
+	// TODO: move url to config
+	catIds := categories.FetchCategoriesFromURL("https://www.ikea.com/at/en/meta-data/navigation/catalog-products-slim.json")
 
 	// fmt.Println(len(*catIds), " categories found")
 	// unique.Strings(catIds)
