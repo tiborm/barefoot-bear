@@ -6,13 +6,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
-type Category struct {
-	Id   string     `json:"id"`
-	Name string     `json:"name"`
-	Subs []Category `json:"subs"`
-}
+
 
 func ReadCategoriesFromFile(file string) *[]string{
 	categoriesJSONFile, err := os.Open(file)
@@ -25,7 +23,7 @@ func ReadCategoriesFromFile(file string) *[]string{
 	categoriesByteArray, _ := io.ReadAll(categoriesJSONFile)
 	defer categoriesJSONFile.Close()
 
-	var categories []Category
+	var categories []model.Category
 	json.Unmarshal(categoriesByteArray, &categories)
 
 	return getSubsInDepth(categories, &[]string{})
@@ -47,7 +45,7 @@ func FetchCategoriesFromURL(url string) *[]string {
 		os.Exit(1)
 	}
 
-	var categories []Category
+	var categories []model.Category
 	json.Unmarshal(categoriesByteArray, &categories)
 
 	return getSubsInDepth(categories, &[]string{})
@@ -57,7 +55,7 @@ func FilterCategories() {
 	
 }
 
-func getSubsInDepth(categories []Category, ids *[]string) *[]string {
+func getSubsInDepth(categories []model.Category, ids *[]string) *[]string {
 	for _, category := range categories {
 		fmt.Println(category.Id)
 		*ids = append(*ids, category.Id)
