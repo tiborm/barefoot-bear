@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 
@@ -44,6 +45,8 @@ func FetchProducsByCategory(categoryId string) {
 	// TODO refactor path to constant, maybe in a separate file	
 	// TODO add folder path to config
 	err = os.WriteFile("./json/products/"+categoryId+".json", body, 0644)
+	
+	log.Println("Fetched products for category: ", categoryId)
 
 	if err != nil {
 		fmt.Println("Error: ", err)

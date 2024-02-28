@@ -1,28 +1,16 @@
-package main
+package transplant
 
 import (
 	"time"
 
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/categories"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/category"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/products"
 )
 
-
-
-func main() {
+func Transplant() {
 	// TODO: move url to config
-	catIds := categories.FetchCategoriesFromURL("https://www.ikea.com/at/en/meta-data/navigation/catalog-products-slim.json")
-
-	// fmt.Println(len(*catIds), " categories found")
-	// unique.Strings(catIds)
-	// fmt.Println(len(*catIds), " unique categories found")
-	
-	// fmt.Println(len(*catIds), " categories found")
-	
-	// unique.Strings(catIds)
-	// Out of 1504 categories, 23 are unique? That's not right
-
-	// TODO filter ids with / character
+	catIds := category.FetchCategoriesFromURL("https://www.ikea.com/at/en/meta-data/navigation/catalog-products-slim.json")
+	catIds = category.ApplyAllCleaner(catIds)
 
 	for _, catId := range *catIds {
 		// TODO: make the sleep time configurable
