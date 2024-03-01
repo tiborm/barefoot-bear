@@ -2,5 +2,6 @@
   "extends": [
     "next/core-web-vitals",
     "plugin:storybook/recommended"
-  ]
+  ],
+  "plugins": ["react", "jsx-a11y", "import", "react-hooks", "plugin:prettier/recommended"],
 }

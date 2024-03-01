@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import MainContainer from "./MainContainer";
+import { MainContainer } from "./MainContainer";
 
 const meta: Meta<typeof MainContainer> = {
     title: "Example/MainContainer",
