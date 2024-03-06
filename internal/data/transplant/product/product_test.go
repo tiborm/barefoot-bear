@@ -1,4 +1,4 @@
-package fetchproducts
+package products
 
 import "testing"
 
