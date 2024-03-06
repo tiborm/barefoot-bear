@@ -1,4 +1,4 @@
-import { MainContainer } from "@core/containers";
+import { MainContainer } from "@core/components/MainContainer/MainContainer";
 import { Inter } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
