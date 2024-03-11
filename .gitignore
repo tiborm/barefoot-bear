@@ -3,6 +3,9 @@
 #
 # Binaries for programs and plugins
 data-transplant/cmd/cli/bfb
+**/json-cache
+
+.vscode/
 
 *.exe
 *.exe~

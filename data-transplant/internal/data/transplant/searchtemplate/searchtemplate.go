@@ -1,8 +1,5 @@
 package searchtemplate
 
-// TODO: move url to config
-const Url = "https://sik.search.blue.cdtapps.com/at/en/search?c=listaf&v=20240110"
-
 var SearchJSONTemplate = []byte(`{
     "searchParameters": {
         "input": "59308",

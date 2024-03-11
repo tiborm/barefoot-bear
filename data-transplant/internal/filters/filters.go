@@ -5,59 +5,59 @@ import (
 	"regexp"
 )
 
-type FilterFn func(categories *[]string) *[]string
+type FilterFn func(IDs []string) []string
 
-func ApplyAllCleaner(categories *[]string) *[]string {
+func ApplyAllCleaner(IDs []string) []string {
 	cleaners := []FilterFn{
 		RemoveDulications, RemoveItemsWithSpecChars,
 	}
 
-	categories = CleanUpCategories(categories, cleaners)
-	return categories
+	IDs = CleanUpIDs(IDs, cleaners)
+	return IDs
 }
 
-// CleanUpCategories applies the given criteria to the list of categories
-func CleanUpCategories(categories *[]string, cleaners []FilterFn) *[]string {
+// CleanUpIDs applies the given criteria to the list of categories
+func CleanUpIDs(IDs []string, cleaners []FilterFn) []string {
 	for _, clean := range cleaners {
-		categories = clean(categories)
+		IDs = clean(IDs)
 	}
 
-	log.Printf("Cleaned up categories, %d remaining", len(*categories))
+	log.Printf("Remaining IDs: %d", len(IDs))
 	
-	return categories
+	return IDs
 }
 
 // RemoveDulications removes duplicate items from the list
-func RemoveDulications(categories *[]string) *[]string {
+func RemoveDulications(IDs []string) []string {
 	seen := make(map[string]bool)
 	result := []string{}
 
-	for _, cat := range *categories {
+	for _, cat := range IDs {
 		if _, ok := seen[cat]; !ok {
 			seen[cat] = true
 			result = append(result, cat)
 		}
 	}
 
-	log.Printf("Removed %d duplicate categories", len(*categories)-len(result))
+	log.Printf("Removed %d duplicate IDs", len(IDs)-len(result))
 
-	return &result
+	return result
 }
 
 // RemoveItemsWithSpecChars removes items from the list that contain special characters
-func RemoveItemsWithSpecChars(categories *[]string) *[]string {
+func RemoveItemsWithSpecChars(IDs []string) []string {
 	result := []string{}
 	
 	pattern := "^[a-zA-Z0-9]+$"
 	re, _ := regexp.Compile(pattern)
 
-	for _, cat := range *categories {
+	for _, cat := range IDs {
 		if re.Match([]byte(cat)) {
 			result = append(result, cat)
 		}
 	}
 
-	log.Printf("Removed %d categories with special characters", len(*categories)-len(result))
+	log.Printf("Removed %d IDs with special characters", len(IDs)-len(result))
 
-	return &result
+	return result
 }

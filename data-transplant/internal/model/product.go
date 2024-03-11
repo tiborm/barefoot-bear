@@ -1,5 +1,19 @@
 package model
 
+type ProductResponse struct {
+    UserGroups []interface{} `json:"usergroups"`
+    Results []ProductResults `json:"results"`
+    TestActivationTriggers interface{} `json:"testActivationTriggers"`
+    MetaData interface{} `json:"metadata"`
+}
+
+type ProductResults struct {
+    Component string `json:"component"`
+    ViewMode string `json:"viewMode"`
+    Filters []interface{} `json:"filters"`
+    Items []Product `json:"items"`
+}
+
 type Product struct {
     Metadata string `json:"metadata"`
     Product ProductDetails `json:"product"`
