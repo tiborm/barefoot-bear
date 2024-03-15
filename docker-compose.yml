@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:4.4
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+
+  category-svc:
+    build: ./services/bb-category-svc
+    volumes:
+      - .:/usr/src/bb-category-svc
+    ports:
+      - 3000:3000
+    environment:
+      MONGO_URI: mongodb://root:example@mongo:27017/categories
+    depends_on:
+      - mongo
+
+  bb-gui:
+    build: ./gui
+    ulimits:
+      nofile:
+        soft: 40960
+        hard: 40960
+    volumes:
+      - .:/usr/src/bb-gui
+    ports:
+      - 80:3000
+    environment:
+      CATEGORY_SVC_URI: http://catalog-svc:3000
+    depends_on:
+      - category-svc
+
+volumes:
+  mongo-data:

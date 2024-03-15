@@ -3,5 +3,5 @@
     "next/core-web-vitals",
     "plugin:storybook/recommended"
   ],
-  "plugins": ["react", "jsx-a11y", "import", "react-hooks", "plugin:prettier/recommended"],
+  "plugins": ["react", "jsx-a11y", "import", "react-hooks", "plugin:prettier/recommended", "plugin:prettier/next" ,"plugin:prettier/storybook"]
 }

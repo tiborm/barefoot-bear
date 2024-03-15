@@ -9,8 +9,8 @@ const useFetchCategories = () => {
         //const fetchCategories = async () => {
         const fetchCategories = () => {
             // const response = await fetch("http://localhost:3001/categories");
-            // NOTE embeedding the data directly into the component for now
-            const data: Category[] = require("../../../../../data-transplant/json-cache/categories.json");
+            // NOTE embeedding the data directly into the component for development purposes
+            const data: Category[] = require("../../../assets/static-json/categories.json");
             setCategories(data);
             setLoading(false);
         }
