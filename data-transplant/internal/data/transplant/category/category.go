@@ -12,10 +12,6 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
 )
-// FIXME is this interface needed?
-type Category interface {
-	GetCategories(forceFetch bool) ([]string, error)
-}
 
 func GetCategories(url string, outputDirectory string, fileName string, forceFetch bool) ([]string, error) {
 	var catIds []string

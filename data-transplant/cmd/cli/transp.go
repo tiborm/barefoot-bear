@@ -33,7 +33,6 @@ func init() {
 	flag.Float64Var(&fetchSleepTime, "fetchSleepTime", float64(sleepTimeInt), "The sleep time between fetches. Environment variable: FETCH_SLEEP_TIME")
 }
 
-// FIXME: read API information from ENV variables
 func main() {
 	flag.Parse()
 

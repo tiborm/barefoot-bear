@@ -90,7 +90,7 @@ func fetchInventoryDataByURL(fetchURL string, fetchSleepTime float64) ([]byte, e
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// TODO: where can I get this header from?
+	// TODO: where can I get this header from? Move it to env var
 	req.Header.Add("X-Client-Id", "b6c117e5-ae61-4ef5-b4cc-e0b1e37f0631")
 
 	client := &http.Client{}

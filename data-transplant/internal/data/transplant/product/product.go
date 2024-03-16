@@ -41,8 +41,6 @@ func GetAllProducts(catIds []string, outputDirectory string, fileExtension strin
 // If the products for a category are not yet cached, or if force fetch is true, this function fetches them from the API and writes them to a file.
 // It returns a list of product IDs in both scenarios.
 func getProductsByCatID(categoryID string, outputDirectory string, fileExtension string, url string, forceFetch bool, fetchSleepTime float64) ([]string, error) {
-	// FIXME you could use a generic fecth or read function for both categories and products, inventory too
-	// function signature??: fetchOrRead(filePath string, fetchURL string, forceFetch bool) ([]byte, error)
 	fileName := categoryID + fileExtension
 	filePath := filepath.Join(outputDirectory, fileName)
 
@@ -51,8 +49,6 @@ func getProductsByCatID(categoryID string, outputDirectory string, fileExtension
 		return nil, fmt.Errorf("error getting products by category: %w", err)
 	}
 
-	// FIXME could we use a generic func to extract ids? a parameter function could return the id (path is a variable)
-	// and the wraping function could be responsible for the interation or the recursion
 	productsIDs, err := extractProductIds(pc)
 	if err != nil {
 		return nil, fmt.Errorf("error extracting product IDs: %w", err)
