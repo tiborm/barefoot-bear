@@ -8,88 +8,100 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/tiborm/barefoot-bear/constants"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfb_io"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
+	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
 )
-
+// FIXME is this interface needed?
 type Category interface {
-	ReadCategoriesFromFile(file string) *[]string
-	FetchCategoriesFromURL(url string) *[]string
+	GetCategories(forceFetch bool) ([]string, error)
 }
 
-func GetCategories(forceFetch bool) ([]string, error) {
-	filePath := filepath.Join(constants.CategoryFolderPath, constants.CategoryFileName)
+func GetCategories(url string, outputDirectory string, fileName string, forceFetch bool) ([]string, error) {
+	var catIds []string
+	var categoryBytes []byte
+	filePath := filepath.Join(outputDirectory, fileName)
 
-	isFileExist, err := bfb_io.IsFileExists(filePath)
+	iscached, err := bfbio.IsFileExists(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("error occurred while checking if the category file exists in the file cache: %w", err)
+		return nil, fmt.Errorf("failed to verify category file in cache: %w", err)
 	}
 
-	if forceFetch || !isFileExist {
-		catIds, err := FetchCategoriesFromURL(constants.CategoryURL)
+	if forceFetch || !iscached {
+		categoryBytes, err = fetchCategoriesFromURL(url) //
 		if err != nil {
 			return nil, fmt.Errorf("error occurred while fetching categories: %w", err)
-		} else {
-			return catIds, nil
 		}
-	} else {
-		catIds, err := ReadCategoriesFromFile(filePath)
+		err = saveCategoriesToFile(outputDirectory, fileName, categoryBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error writing categories to file: %w", err)
+		}
+	}
+
+	if len(categoryBytes) == 0 {
+		categoryBytes, err = readCategoriesFromFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("error reading file: %w", err)
-		} else {
-			return catIds, nil
 		}
 	}
+
+	catIds = *getCategoryIDs(categoryBytes)
+
+	log.Println("Cleaning category IDs")
+	return cleanUpIDs(catIds), nil
 }
 
-// ReadCategoriesFromFile reads categories from the given file
-func ReadCategoriesFromFile(file string) ([]string, error) {
-	categoriesByteArray, err := bfb_io.GetFile(file)
+func cleanUpIDs(ids []string) []string {
+	return filters.ApplyAllCleaner(ids)
+}
+
+func readCategoriesFromFile(file string) ([]byte, error) {
+	categoriesByteArray, err := bfbio.GetFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("error reading cached category file: %w", err)
+		return nil, err
 	}
 
-	var categories []model.Category
-	json.Unmarshal(categoriesByteArray, &categories)
-
-	return *getSubsInDepth(categories, &[]string{}), nil
+	return categoriesByteArray, nil
 }
 
-// FetchCategoriesFromURL fetches categories from the given URL
-func FetchCategoriesFromURL(url string) ([]string, error) {
+func fetchCategoriesFromURL(url string) ([]byte, error) {
 	response, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching categories: %w", err)
+		return nil, err
 	}
-
-	categoriesByteArray, err := io.ReadAll(response.Body)
 	defer response.Body.Close()
 
+	categoriesByteArray, err := io.ReadAll(response.Body)
+
 	if err != nil {
-		return nil, fmt.Errorf("error reading categories response: %w", err)
+		return nil, err
 	}
 
-	bfb_io.WriteFile(constants.CategoryFolderPath, constants.CategoryFileName, categoriesByteArray)
+	return categoriesByteArray, nil
+}
 
+func getCategoryIDs(categoriesByteArray []byte) *[]string {
 	var categories []model.Category
 	json.Unmarshal(categoriesByteArray, &categories)
 
 	log.Printf("Fetched %d main categories", len(categories))
 
-	allCategories := getSubsInDepth(categories, &[]string{})
+	allCategories := getSubIDsInDepth(categories, &[]string{})
 
 	log.Printf("Fetched %d categories in total, including sub-categories", len(*allCategories))
-
-	return *allCategories, nil
+	return allCategories
 }
 
-// getSubsInDepth is a helper function to extract all sub-categories from a category
-func getSubsInDepth(categories []model.Category, ids *[]string) *[]string {
+func saveCategoriesToFile(outputDirectory string, fileName string, categories []byte) error {
+	return bfbio.WriteFile(outputDirectory, fileName, categories)
+}
+
+// getSubIDsInDepth is a helper function to extract all sub-category ID
+func getSubIDsInDepth(categories []model.Category, ids *[]string) *[]string {
 	for _, category := range categories {
 		*ids = append(*ids, category.ID)
 		if category.Subs != nil {
-			getSubsInDepth(category.Subs, ids)
+			getSubIDsInDepth(category.Subs, ids)
 		}
 	}
 

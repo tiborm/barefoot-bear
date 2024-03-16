@@ -39,7 +39,7 @@ func TestExtractingSubCategories(t *testing.T) {
 	}
 
 	// Test extracting sub-categories
-	IDs := getSubsInDepth([]model.Category{category}, &[]string{})
+	IDs := getSubIDsInDepth([]model.Category{category}, &[]string{})
 
 	if len(*IDs) != 5 {
 		t.Errorf("Failed to extract all sub-categories")
@@ -51,4 +51,3 @@ func TestExtractingSubCategories(t *testing.T) {
 		}
 	}
 }
-
