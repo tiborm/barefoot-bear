@@ -13,9 +13,9 @@ import (
 
 func GetAllInventoryData(
 	allProductIDs []string,
-	url string,
 	outputDirectory string,
 	fileExtension string,
+	url string,
 	queryParams string,
 	forceFetch bool,
 	fetchSleepTime float64,
@@ -50,7 +50,7 @@ func fetchInventoryByProductID(
 ) error {
 	fileName := productID + fileExtension
 	filePath := filepath.Join(outputDirectory, fileName)
-	fetchUrl := url + productID + queryParams
+	fetchURL := url + productID + queryParams
 	var inventoryBytes []byte
 
 	isCached, err := bfbio.IsFileExists(filePath)
@@ -59,7 +59,7 @@ func fetchInventoryByProductID(
 	}
 
 	if forceFetch && !isCached {
-		inventoryBytes, err = fetchInventoryDataByURL(fetchUrl, fetchSleepTime)
+		inventoryBytes, err = fetchInventoryDataByURL(fetchURL, fetchSleepTime)
 		if err != nil {
 			return fmt.Errorf("failed to fetch inventory data: %w", err)
 		}
@@ -84,8 +84,8 @@ func readInventoryFromFile(file string) ([]byte, error) {
 	return inventoryByteArray, nil
 }
 
-func fetchInventoryDataByURL(fetchUrl string, fetchSleepTime float64) ([]byte, error) {
-	req, err := http.NewRequest("GET", fetchUrl, nil)
+func fetchInventoryDataByURL(fetchURL string, fetchSleepTime float64) ([]byte, error) {
+	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

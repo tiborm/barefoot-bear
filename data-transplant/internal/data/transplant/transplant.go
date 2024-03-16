@@ -3,7 +3,6 @@ package transplant
 import (
 	"fmt"
 
-	"github.com/tiborm/barefoot-bear/constants"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/category"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/inventory"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/product"
@@ -16,13 +15,26 @@ import (
 // fetchSleepTime is the time to wait between each fetch request.
 // It returns an error if any of the fetching fails.
 // It returns nil if the fetching is successful.
-func StartDataTransplant(forceFetch bool, fetchSleepTime float64) error {
-	// FIXME if forceFetch is true, empty the cache directory, not here, but in the category, product and inventory packages
+func StartDataTransplant(
+	categoryURL string, 
+	categoryFolderPath string,
+	CategoryFileName string, 
+	productSearchURL string,
+	productsFolderPath string,
+	productsFileExtension string,
+	inventoryURL string,
+	inventoryFolderPath string,
+	inventoryFileExtension string,
+	inventoryQueryParams string,
+	forceFetch bool, 
+	fetchSleepTime float64,
+) error {
+	// FIXME if forceFetch is true, empty the cache directory
 	catIds,  err := category.GetCategories(
-		constants.CategoryURL,
-		constants.CategoryFolderPath,
-		constants.CategoryFileName,
-		true,
+		categoryURL,
+		categoryFolderPath,
+		CategoryFileName,
+		forceFetch,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get categories: %w", err)
@@ -30,9 +42,9 @@ func StartDataTransplant(forceFetch bool, fetchSleepTime float64) error {
 
 	allProductIDs, err := product.GetAllProducts(
 		catIds, 
-		constants.ProductsFolderPath, 
-		constants.ProductsFileExtension, 
-		constants.ProductSearchUrl, 
+		productsFolderPath, 
+		productsFileExtension, 
+		productSearchURL, 
 		forceFetch, 
 		fetchSleepTime,
 	)
@@ -42,10 +54,10 @@ func StartDataTransplant(forceFetch bool, fetchSleepTime float64) error {
 
 	err = inventory.GetAllInventoryData(
 		allProductIDs,
-		constants.InventoryURL,
-		constants.InventoryFolderPath,
-		constants.InventoryFileExtension,
-		constants.InventoryQueryParams,
+		inventoryFolderPath,
+		inventoryFileExtension,
+		inventoryURL,
+		inventoryQueryParams,
 		forceFetch,
 		fetchSleepTime,
 	)

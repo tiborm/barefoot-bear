@@ -1,0 +1,3 @@
+export CATEGORY_URL=""
+export PRODUCT_SEARCH_URL=""
+export INVENTORY_URL=""
