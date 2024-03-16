@@ -11,8 +11,8 @@ const (
 
 	InventoryFolderPath = "./json-cache/inventory/"
 	InventoryFileExtension = ".inventory.json"
-	InventoryUrl = "https://api.ingka.ikea.com/cia/availabilities/ru/at?itemNos="
-	InventoryExpand = "&expand=StoresList,Restocks,SalesLocations,DisplayLocations"
+	InventoryURL = "https://api.ingka.ikea.com/cia/availabilities/ru/at?itemNos="
+	InventoryQueryParams = "&expand=StoresList,Restocks,SalesLocations,DisplayLocations"
 	
 	FetchSleepTime = 1.0
 	ForceFetch = false

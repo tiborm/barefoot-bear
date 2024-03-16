@@ -2,46 +2,56 @@ package transplant
 
 import (
 	"fmt"
-	"log"
-	"os"
 
+	"github.com/tiborm/barefoot-bear/constants"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/category"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/inventory"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/product"
-	"github.com/tiborm/barefoot-bear/internal/filters"
 )
 
-func Transplant(fetchSleepTime float64, forceFetch bool) {
-	// FIXME if forceFetch is true, remove file cache directory
-	catIds, err := category.GetCategories(forceFetch)
+// StartDataTransplant orchestrates the fetching of the data from an unamed API.
+// It fetches the categories, products and inventory data.
+// If forceFetch is true, it will remove the file cache directory and fetch the data again.
+// If forceFetch is false, it will fetch the data only if it is not already cached.
+// fetchSleepTime is the time to wait between each fetch request.
+// It returns an error if any of the fetching fails.
+// It returns nil if the fetching is successful.
+func StartDataTransplant(forceFetch bool, fetchSleepTime float64) error {
+	// FIXME if forceFetch is true, empty the cache directory, not here, but in the category, product and inventory packages
+	catIds,  err := category.GetCategories(
+		constants.CategoryURL,
+		constants.CategoryFolderPath,
+		constants.CategoryFileName,
+		true,
+	)
 	if err != nil {
-		log.Println("Error: ", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to get categories: %w", err)
 	}
 
-	fmt.Println("Cleaning category IDs")
-	catIds = filters.ApplyAllCleaner(catIds)
-
-	allProductIDs := make([]string, 0)
-	for _, catId := range catIds {
-		prodIDs, err := product.GetProducts(catId, forceFetch, fetchSleepTime)
-		if err != nil {
-			log.Println("Error: ", err)
-			os.Exit(1)
-		}
-		allProductIDs = append(allProductIDs, prodIDs...)
+	allProductIDs, err := product.GetAllProducts(
+		catIds, 
+		constants.ProductsFolderPath, 
+		constants.ProductsFileExtension, 
+		constants.ProductSearchUrl, 
+		forceFetch, 
+		fetchSleepTime,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get all products: %w", err)
 	}
 
-	fmt.Println("Cleaning product IDs")
-	allProductIDs = filters.ApplyAllCleaner(allProductIDs)
-
-	for _, prodId := range allProductIDs {
-		err := inventory.FetchInventoryByProductID(prodId, fetchSleepTime)
-		if err != nil {
-			log.Println("Error: ", err)
-			os.Exit(1)
-		}
+	err = inventory.GetAllInventoryData(
+		allProductIDs,
+		constants.InventoryURL,
+		constants.InventoryFolderPath,
+		constants.InventoryFileExtension,
+		constants.InventoryQueryParams,
+		forceFetch,
+		fetchSleepTime,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to get all inventory data: %w", err)
 	}
-	// TODO give some feedback to the user about the progress of the fetching process
-	// like "Fetching products for category 1 of 100"
+
+	return nil
 }

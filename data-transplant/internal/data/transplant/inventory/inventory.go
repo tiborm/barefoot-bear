@@ -8,38 +8,103 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tiborm/barefoot-bear/constants"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfb_io"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
 )
 
-// FIXME !!! Fetch doesn't work bc, of request key problem
-func FetchInventoryByProductID(productID string, fetchSleepTime float64) error {
-	fileName := productID + constants.InventoryFileExtension
-	filePath := filepath.Join(constants.InventoryFolderPath, fileName)
-	fetchUrl := constants.InventoryUrl + productID + constants.InventoryExpand
-
-	response, err := http.Get(fetchUrl)
-	if err != nil {
-		return fmt.Errorf("error fetching inventory: %w", err)
+func GetAllInventoryData(
+	allProductIDs []string,
+	url string,
+	outputDirectory string,
+	fileExtension string,
+	queryParams string,
+	forceFetch bool,
+	fetchSleepTime float64,
+) error {
+	for _, prodId := range allProductIDs {
+		err := fetchInventoryByProductID(
+			prodId,
+			url,
+			fileExtension,
+			outputDirectory,
+			queryParams,
+			forceFetch,
+			fetchSleepTime,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to get inventory data for prduct: %s, %w", prodId, err)
+		}
+		log.Println("Inventory data fetched and cached for product: ", prodId)
 	}
+
+	return nil
+}
+
+func fetchInventoryByProductID(
+	productID string,
+	url string,
+	outputDirectory string,
+	fileExtension string,
+	queryParams string,
+	forceFetch bool,
+	fetchSleepTime float64,
+) error {
+	fileName := productID + fileExtension
+	filePath := filepath.Join(outputDirectory, fileName)
+	fetchUrl := url + productID + queryParams
+	var inventoryBytes []byte
+
+	isCached, err := bfbio.IsFileExists(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to verify inventory file in cache: %w", err)
+	}
+
+	if forceFetch && !isCached {
+		inventoryBytes, err = fetchInventoryDataByURL(fetchUrl, fetchSleepTime)
+		if err != nil {
+			return fmt.Errorf("failed to fetch inventory data: %w", err)
+		}
+	}
+
+	if len(inventoryBytes) == 0 {
+		inventoryBytes, err = readInventoryFromFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read cached inventory file: %w", err)
+		}
+	}
+
+	return bfbio.WriteFile(outputDirectory, fileName, inventoryBytes)
+}
+
+func readInventoryFromFile(file string) ([]byte, error) {
+	inventoryByteArray, err := bfbio.GetFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return inventoryByteArray, nil
+}
+
+func fetchInventoryDataByURL(fetchUrl string, fetchSleepTime float64) ([]byte, error) {
+	req, err := http.NewRequest("GET", fetchUrl, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// TODO: where can I get this header from?
+	req.Header.Add("X-Client-Id", "b6c117e5-ae61-4ef5-b4cc-e0b1e37f0631")
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch inventory: %w", err)
+	}
+	defer response.Body.Close()
+
 	time.Sleep(time.Duration(fetchSleepTime) * time.Second)
 
 	body, err := io.ReadAll(response.Body)
-	defer response.Body.Close()
-
 	if err != nil {
-		return fmt.Errorf("error reading fetched inventory: %w", err)
+		return nil, fmt.Errorf("failed to read fetched inventory data: %w", err)
 	}
-
-	// TODO Fetch only if file yet not exists (state sync is not a concern), force synd from config
-	// TODO separate fetching and writing to file
-	
-	err = bfb_io.WriteFile(filePath, fileName, body)
-	if err != nil {
-		return fmt.Errorf("error writing inventory file: %w", err)
-	}
-
-	log.Println("Fetched and cached inventory data for product: ", productID)
-
-	return nil
+	return body, nil
 }
