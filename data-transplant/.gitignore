@@ -7,6 +7,8 @@ data-transplant/cmd/cli/bfb
 
 transp
 
+scripts/env-vars.sh
+
 *.exe
 *.exe~
 *.dll
