@@ -14,17 +14,23 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
 	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
+	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
 type (
 	productBytes []byte
-	Product         struct{}
+	Product      struct{}
 )
 
-func GetAllProducts(catIds []string, outputDirectory string, fileExtension string, url string, forceFetch bool, fetchSleepTime float64) ([]string, error) {
+func GetAllProducts(catIds []string, params params.FetchAndStoreConfig, forceFetch bool, fetchSleepTime float64) ([]string, error) {
 	allProductIDs := make([]string, 0)
 	for _, catId := range catIds {
-		prodIDs, err := getProductsByCatID(catId, outputDirectory, fileExtension, url, forceFetch, fetchSleepTime)
+		prodIDs, err := getProductsByCatID(
+			catId,
+			params,
+			forceFetch,
+			fetchSleepTime,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error getting products for category: %s, %w", catId, err)
 		}
@@ -40,11 +46,16 @@ func GetAllProducts(catIds []string, outputDirectory string, fileExtension strin
 // getProductsByCatID fetches products by category from an API or reads them from a file if they are already cached.
 // If the products for a category are not yet cached, or if force fetch is true, this function fetches them from the API and writes them to a file.
 // It returns a list of product IDs in both scenarios.
-func getProductsByCatID(categoryID string, outputDirectory string, fileExtension string, url string, forceFetch bool, fetchSleepTime float64) ([]string, error) {
-	fileName := categoryID + fileExtension
-	filePath := filepath.Join(outputDirectory, fileName)
+func getProductsByCatID(
+	categoryID string,
+	params params.FetchAndStoreConfig,
+	forceFetch bool,
+	fetchSleepTime float64,
+) ([]string, error) {
+	fileName := categoryID + params.FileNameExtension
+	filePath := filepath.Join(params.FolderPath, fileName)
 
-	pc, isCached, err := getProducts(categoryID, filePath, url, forceFetch, fetchSleepTime)
+	pc, isCached, err := getProducts(categoryID, filePath, params.FetchURL, forceFetch, fetchSleepTime)
 	if err != nil {
 		return nil, fmt.Errorf("error getting products by category: %w", err)
 	}
@@ -54,13 +65,13 @@ func getProductsByCatID(categoryID string, outputDirectory string, fileExtension
 		return nil, fmt.Errorf("error extracting product IDs: %w", err)
 	}
 
-	if !isCached || forceFetch {
-		err = bfbio.WriteFile(outputDirectory, fileName, pc)
+	if forceFetch || !isCached {
+		err = bfbio.WriteFile(params.FolderPath, fileName, pc)
 		if err != nil {
 			return nil, fmt.Errorf("error writing products file: %w", err)
 		}
 
-		log.Println("Category ID: ", categoryID, " Products fetched and written to file: ", filepath.Join(outputDirectory, fileName))
+		log.Println("Category ID: ", categoryID, " Products fetched and written to file: ", filepath.Join(params.FolderPath, fileName))
 	}
 
 	return productsIDs, nil
@@ -77,6 +88,10 @@ func extractProductIds(pc productBytes) ([]string, error) {
 		return nil, fmt.Errorf("error unmarshalling products: %w", err)
 	}
 
+	if len(productsResponse.Results) == 0 {
+		return []string{}, nil
+	}
+	
 	products := productsResponse.Results[0].Items
 	productsIDs := make([]string, len(products))
 	for i, product := range products {

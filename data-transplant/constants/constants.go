@@ -11,6 +11,6 @@ const (
 	InventoryFileExtension = ".inventory.json"
 	InventoryQueryParams = "&expand=StoresList,Restocks,SalesLocations,DisplayLocations"
 	
-	FetchSleepTime = 1.0
+	FetchSleepTime = .2
 	ForceFetch = false
 )

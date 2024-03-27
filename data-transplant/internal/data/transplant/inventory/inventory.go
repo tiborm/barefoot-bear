@@ -9,29 +9,27 @@ import (
 	"time"
 
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
+	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
 func GetAllInventoryData(
 	allProductIDs []string,
-	outputDirectory string,
-	fileExtension string,
-	url string,
-	queryParams string,
+	params params.FetchAndStoreConfig,
+	clientToken string,
 	forceFetch bool,
 	fetchSleepTime float64,
 ) error {
 	for _, prodId := range allProductIDs {
 		err := fetchInventoryByProductID(
 			prodId,
-			url,
-			fileExtension,
-			outputDirectory,
-			queryParams,
+			params,
+			clientToken,
 			forceFetch,
 			fetchSleepTime,
 		)
 		if err != nil {
-			return fmt.Errorf("failed to get inventory data for prduct: %s, %w", prodId, err)
+			log.Println("failed to get inventory data for prduct: %w, %w", prodId, err)
+			return err
 		}
 		log.Println("Inventory data fetched and cached for product: ", prodId)
 	}
@@ -41,16 +39,14 @@ func GetAllInventoryData(
 
 func fetchInventoryByProductID(
 	productID string,
-	url string,
-	outputDirectory string,
-	fileExtension string,
-	queryParams string,
+	params params.FetchAndStoreConfig,
+	clientToken string,
 	forceFetch bool,
 	fetchSleepTime float64,
 ) error {
-	fileName := productID + fileExtension
-	filePath := filepath.Join(outputDirectory, fileName)
-	fetchURL := url + productID + queryParams
+	fileName := productID + params.FileNameExtension
+	filePath := filepath.Join(params.FolderPath, fileName)
+	fetchURL := params.FetchURL + productID + params.QueryParams
 	var inventoryBytes []byte
 
 	isCached, err := bfbio.IsFileExists(filePath)
@@ -58,8 +54,8 @@ func fetchInventoryByProductID(
 		return fmt.Errorf("failed to verify inventory file in cache: %w", err)
 	}
 
-	if forceFetch && !isCached {
-		inventoryBytes, err = fetchInventoryDataByURL(fetchURL, fetchSleepTime)
+	if forceFetch || !isCached {
+		inventoryBytes, err = fetchInventoryDataByURL(fetchURL, clientToken, fetchSleepTime)
 		if err != nil {
 			return fmt.Errorf("failed to fetch inventory data: %w", err)
 		}
@@ -72,7 +68,7 @@ func fetchInventoryByProductID(
 		}
 	}
 
-	return bfbio.WriteFile(outputDirectory, fileName, inventoryBytes)
+	return bfbio.WriteFile(params.FolderPath, fileName, inventoryBytes)
 }
 
 func readInventoryFromFile(file string) ([]byte, error) {
@@ -84,19 +80,19 @@ func readInventoryFromFile(file string) ([]byte, error) {
 	return inventoryByteArray, nil
 }
 
-func fetchInventoryDataByURL(fetchURL string, fetchSleepTime float64) ([]byte, error) {
+func fetchInventoryDataByURL(fetchURL string, clientToken string, fetchSleepTime float64) ([]byte, error) {
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, err
 	}
 
 	// TODO: where can I get this header from? Move it to env var
-	req.Header.Add("X-Client-Id", "b6c117e5-ae61-4ef5-b4cc-e0b1e37f0631")
+	req.Header.Add("X-Client-Id", clientToken)
 
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch inventory: %w", err)
+		return nil, err
 	}
 	defer response.Body.Close()
 
@@ -104,7 +100,7 @@ func fetchInventoryDataByURL(fetchURL string, fetchSleepTime float64) ([]byte, e
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read fetched inventory data: %w", err)
+		return nil, err
 	}
 	return body, nil
 }

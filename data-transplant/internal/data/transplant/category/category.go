@@ -11,12 +11,13 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
 	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
+	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func GetCategories(url string, outputDirectory string, fileName string, forceFetch bool) ([]string, error) {
+func GetCategories(params params.FetchAndStoreConfig, forceFetch bool, fetchSleepTime float64) ([]string, error) {
 	var catIds []string
 	var categoryBytes []byte
-	filePath := filepath.Join(outputDirectory, fileName)
+	filePath := filepath.Join(params.FolderPath, params.FileNameExtension)
 
 	iscached, err := bfbio.IsFileExists(filePath)
 	if err != nil {
@@ -24,11 +25,11 @@ func GetCategories(url string, outputDirectory string, fileName string, forceFet
 	}
 
 	if forceFetch || !iscached {
-		categoryBytes, err = fetchCategoriesFromURL(url) //
+		categoryBytes, err = fetchCategoriesFromURL(params.FetchURL)
 		if err != nil {
 			return nil, fmt.Errorf("error occurred while fetching categories: %w", err)
 		}
-		err = saveCategoriesToFile(outputDirectory, fileName, categoryBytes)
+		err = saveCategoriesToFile(params.FolderPath, params.FileNameExtension, categoryBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error writing categories to file: %w", err)
 		}
@@ -68,7 +69,6 @@ func fetchCategoriesFromURL(url string) ([]byte, error) {
 	defer response.Body.Close()
 
 	categoriesByteArray, err := io.ReadAll(response.Body)
-
 	if err != nil {
 		return nil, err
 	}
