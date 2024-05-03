@@ -11,19 +11,14 @@ import (
 	"time"
 
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
 	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-type (
-	productBytes []byte
-	Product      struct{}
-)
-
-func GetAllProducts(catIds []string, params params.FetchAndStoreConfig, forceFetch bool, fetchSleepTime float64) ([]string, error) {
+func GetAllProducts(catIds []string, params params.FetchAndStoreParams, forceFetch bool, fetchSleepTime float64) ([]string, error) {
 	allProductIDs := make([]string, 0)
+	
 	for _, catId := range catIds {
 		prodIDs, err := getProductsByCatID(
 			catId,
@@ -48,25 +43,45 @@ func GetAllProducts(catIds []string, params params.FetchAndStoreConfig, forceFet
 // It returns a list of product IDs in both scenarios.
 func getProductsByCatID(
 	categoryID string,
-	params params.FetchAndStoreConfig,
+	params params.FetchAndStoreParams,
 	forceFetch bool,
 	fetchSleepTime float64,
 ) ([]string, error) {
 	fileName := categoryID + params.FileNameExtension
 	filePath := filepath.Join(params.FolderPath, fileName)
 
-	pc, isCached, err := getProducts(categoryID, filePath, params.FetchURL, forceFetch, fetchSleepTime)
+	// Check if products of category are already cached
+	isCached, err := bfbio.IsFileExists(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("error getting products by category: %w", err)
+		return nil, fmt.Errorf("error checking products of category in file cache: %w", err)
 	}
 
-	productsIDs, err := extractProductIds(pc)
+	var prodContent []byte
+	// Geting products from cache if they are already cached and forceFetch is false
+	if isCached && !forceFetch {
+		prodContent, err = bfbio.GetFile(filePath)
+		if err != nil {
+			log.Println("Error reading products from cache, trying fetching from URL", err)
+		}
+	}
+	// Fetching products from URL if they are not cached or forceFetch is true
+	if prodContent == nil {
+		if forceFetch {
+			log.Println("Force fetching products from URL")
+		}
+		prodContent, err = fetchProductsFromAPI(categoryID, params.PostPayload, params.FetchURL, fetchSleepTime)
+		if err != nil {
+			return nil, fmt.Errorf("error reading or fetching products: %w", err)
+		}
+	}
+
+	productsIDs, err := extractProductIds(prodContent)
 	if err != nil {
 		return nil, fmt.Errorf("error extracting product IDs: %w", err)
 	}
 
 	if forceFetch || !isCached {
-		err = bfbio.WriteFile(params.FolderPath, fileName, pc)
+		err = bfbio.WriteFile(params.FolderPath, fileName, prodContent)
 		if err != nil {
 			return nil, fmt.Errorf("error writing products file: %w", err)
 		}
@@ -81,7 +96,7 @@ func CleanUpIDs(ids []string) []string {
 	return filters.ApplyAllCleaner(ids)
 }
 
-func extractProductIds(pc productBytes) ([]string, error) {
+func extractProductIds(pc []byte) ([]string, error) {
 	var productsResponse model.ProductResponse
 	err := json.Unmarshal(pc, &productsResponse)
 	if err != nil {
@@ -91,7 +106,7 @@ func extractProductIds(pc productBytes) ([]string, error) {
 	if len(productsResponse.Results) == 0 {
 		return []string{}, nil
 	}
-	
+
 	products := productsResponse.Results[0].Items
 	productsIDs := make([]string, len(products))
 	for i, product := range products {
@@ -100,38 +115,9 @@ func extractProductIds(pc productBytes) ([]string, error) {
 	return productsIDs, nil
 }
 
-func getProducts(categoryId string, filePath string, url string, forceFetch bool, fetchSleepTime float64) (productBytes, bool, error) {
-	// Check if products of category are already cached
-	isCached, err := bfbio.IsFileExists(filePath)
-	if err != nil {
-		return nil, isCached, fmt.Errorf("error checking products of category in file cache: %w", err)
-	}
-
-	var prodContent productBytes
-	// Geting products from cache if they are already cached and forceFetch is false
-	if isCached && !forceFetch {
-		prodContent, err = bfbio.GetFile(filePath)
-		if err != nil {
-			log.Println("Error reading products from cache, trying fetching from URL", err)
-		}
-	}
-	// Fetching products from URL if they are not cached or forceFetch is true
-	if prodContent == nil {
-		if forceFetch {
-			log.Println("Force fetching products from URL")
-		}
-		prodContent, err = fetchProductsFromAPI(categoryId, url, fetchSleepTime)
-		if err != nil {
-			return nil, isCached, fmt.Errorf("error reading or fetching products: %w", err)
-		}
-	}
-
-	return prodContent, isCached, nil
-}
-
-func fetchProductsFromAPI(categoryId string, url string, fetchSleepTime float64) (productBytes, error) {
+func fetchProductsFromAPI(categoryId string, searchTemplate []byte, url string, fetchSleepTime float64) ([]byte, error) {
 	var searchJsonMap map[string]interface{}
-	json.Unmarshal(searchtemplate.SearchJSONTemplate, &searchJsonMap)
+	json.Unmarshal(searchTemplate, &searchJsonMap)
 
 	searchJsonMap["searchParameters"].(map[string]interface{})["input"] = categoryId
 
@@ -155,5 +141,5 @@ func fetchProductsFromAPI(categoryId string, url string, fetchSleepTime float64)
 		return nil, fmt.Errorf("error reading fetched products: %w", err)
 	}
 
-	return productBytes(prodContent), nil
+	return prodContent, nil
 }

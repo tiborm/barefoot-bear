@@ -14,7 +14,7 @@ import (
 
 func GetAllInventoryData(
 	allProductIDs []string,
-	params params.FetchAndStoreConfig,
+	params params.FetchAndStoreParams,
 	clientToken string,
 	forceFetch bool,
 	fetchSleepTime float64,
@@ -39,7 +39,7 @@ func GetAllInventoryData(
 
 func fetchInventoryByProductID(
 	productID string,
-	params params.FetchAndStoreConfig,
+	params params.FetchAndStoreParams,
 	clientToken string,
 	forceFetch bool,
 	fetchSleepTime float64,

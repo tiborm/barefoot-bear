@@ -16,7 +16,7 @@ import (
 // fetchSleepTime is the time to wait between each fetch request.
 // It returns an error if any of the fetching fails.
 // It returns nil if the fetching is successful.
-func StartDataTransplant(params params.DataTransplantConfig, clientToken string) error {
+func StartDataTransplant(params params.DataTransplantParams, clientToken string) error {
 	// FIXME if forceFetch is true, empty the cache directory
 	catIds, err := category.GetCategories(
 		params.Categories,

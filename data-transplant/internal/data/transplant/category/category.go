@@ -14,7 +14,7 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func GetCategories(params params.FetchAndStoreConfig, forceFetch bool, fetchSleepTime float64) ([]string, error) {
+func GetCategories(params params.FetchAndStoreParams, forceFetch bool, fetchSleepTime float64) ([]string, error) {
 	var catIds []string
 	var categoryBytes []byte
 	filePath := filepath.Join(params.FolderPath, params.FileNameExtension)

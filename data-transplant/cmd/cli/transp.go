@@ -6,6 +6,7 @@ import (
 
 	"github.com/tiborm/barefoot-bear/constants"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
 	"github.com/tiborm/barefoot-bear/internal/params"
 	"github.com/tiborm/barefoot-bear/internal/utils/config"
 )
@@ -40,18 +41,19 @@ func init() {
 func main() {
 	flag.Parse()
 
-	err := transplant.StartDataTransplant(params.DataTransplantConfig{
-		Products: params.FetchAndStoreConfig{
-			FolderPath:        constants.ProductsFolderPath,
-			FileNameExtension: constants.ProductsFileExtension,
-			FetchURL:          productSearchURL,
-		},
-		Categories: params.FetchAndStoreConfig{
+	err := transplant.StartDataTransplant(params.DataTransplantParams{
+		Categories: params.FetchAndStoreParams{
 			FolderPath:        constants.CategoryFolderPath,
 			FileNameExtension: constants.CategoryFileName,
 			FetchURL:          categoryURL,
 		},
-		Inventory: params.FetchAndStoreConfig{
+		Products: params.FetchAndStoreParams{
+			FolderPath:        constants.ProductsFolderPath,
+			FileNameExtension: constants.ProductsFileExtension,
+			FetchURL:          productSearchURL,
+			PostPayload:       searchtemplate.SearchJSONTemplate,
+		},
+		Inventory: params.FetchAndStoreParams{
 			FolderPath:        constants.InventoryFolderPath,
 			FileNameExtension: constants.InventoryFileExtension,
 			FetchURL:          inventoryURL,
