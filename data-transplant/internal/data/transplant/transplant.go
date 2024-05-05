@@ -2,51 +2,74 @@ package transplant
 
 import (
 	"fmt"
+	"path/filepath"
 
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/category"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/inventory"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/product"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
+	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-// StartDataTransplant orchestrates the fetching of the data from an unamed API.
-// It fetches the categories, products and inventory data.
-// If forceFetch is true, it will remove the file cache directory and fetch the data again.
-// If forceFetch is false, it will fetch the data only if it is not already cached.
-// fetchSleepTime is the time to wait between each fetch request.
-// It returns an error if any of the fetching fails.
-// It returns nil if the fetching is successful.
-func StartDataTransplant(params params.DataTransplantParams, clientToken string) error {
-	// FIXME if forceFetch is true, empty the cache directory
-	catIds, err := category.GetCategories(
-		params.Categories,
-		params.ForceFetch,
-		params.FetchSleepTime,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get categories: %w", err)
+func FetchAndStore(params params.FetchAndStoreParams, IDs []string) ([]string, error) {
+	var fetchedBytes []byte
+	var id string
+	var iterations int
+	allProductIDs := make([]string, 0)
+
+	if IDs == nil {
+		iterations = 1
+	} else {
+		iterations = len(IDs)
 	}
 
-	allProductIDs, err := product.GetAllProducts(
-		catIds,
-		params.Products,
-		params.ForceFetch,
-		params.FetchSleepTime,
-	)
+	for i := 0; i < iterations; i++ {
+		if IDs == nil {
+			id = ""
+		} else {
+			id = IDs[i]
+		}
+
+		fileName := fmt.Sprintf("%s%s", id, params.StoreParams.FileNameExtension)
+		filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
+
+		isCached, err := bfbio.IsFileExists(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to verify file in cache: %w", err)
+		}
+
+		if params.FetchParams.ForceFetch || !isCached {
+			fetchedBytes, err := params.FetchFn(id, params.FetchParams)
+			if err != nil {
+				return nil, fmt.Errorf("error occurred while fetching: %w", err)
+			}
+			err = bfbio.WriteFile(params.StoreParams.FolderPath, fileName, fetchedBytes)
+			if err != nil {
+				return nil, fmt.Errorf("error writing to file: %w", err)
+			}
+		}
+
+		if len(fetchedBytes) == 0 {
+			fetchedBytes, err = readCategoriesFromFile(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("error reading file: %w", err)
+			}
+		}
+
+		extractedIDs, err := params.IDExtractorFn(fetchedBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error extracting IDs: %w", err)
+		}
+
+		fmt.Println("Cleaning IDs")
+		allProductIDs = append(allProductIDs, filters.ApplyAllCleaner(extractedIDs)...)
+	}
+	return allProductIDs, nil
+}
+
+func readCategoriesFromFile(file string) ([]byte, error) {
+	categoriesByteArray, err := bfbio.GetFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to get all products: %w", err)
+		return nil, err
 	}
 
-	err = inventory.GetAllInventoryData(
-		allProductIDs,
-		params.Inventory,
-		clientToken,
-		params.ForceFetch,
-		params.FetchSleepTime,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get all inventory data: %w", err)
-	}
-
-	return nil
+	return categoriesByteArray, nil
 }

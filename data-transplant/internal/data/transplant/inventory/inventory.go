@@ -15,17 +15,11 @@ import (
 func GetAllInventoryData(
 	allProductIDs []string,
 	params params.FetchAndStoreParams,
-	clientToken string,
-	forceFetch bool,
-	fetchSleepTime float64,
 ) error {
 	for _, prodId := range allProductIDs {
-		err := fetchInventoryByProductID(
+		err := getInventoryByProductID(
 			prodId,
 			params,
-			clientToken,
-			forceFetch,
-			fetchSleepTime,
 		)
 		if err != nil {
 			log.Println("failed to get inventory data for prduct: %w, %w", prodId, err)
@@ -37,16 +31,12 @@ func GetAllInventoryData(
 	return nil
 }
 
-func fetchInventoryByProductID(
+func getInventoryByProductID(
 	productID string,
 	params params.FetchAndStoreParams,
-	clientToken string,
-	forceFetch bool,
-	fetchSleepTime float64,
 ) error {
-	fileName := productID + params.FileNameExtension
-	filePath := filepath.Join(params.FolderPath, fileName)
-	fetchURL := params.FetchURL + productID + params.QueryParams
+	fileName := productID + params.StoreParams.FileNameExtension
+	filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
 	var inventoryBytes []byte
 
 	isCached, err := bfbio.IsFileExists(filePath)
@@ -54,8 +44,8 @@ func fetchInventoryByProductID(
 		return fmt.Errorf("failed to verify inventory file in cache: %w", err)
 	}
 
-	if forceFetch || !isCached {
-		inventoryBytes, err = fetchInventoryDataByURL(fetchURL, clientToken, fetchSleepTime)
+	if params.FetchParams.ForceFetch || !isCached {
+		inventoryBytes, err = FetchInventoriesFromAPI(productID, params.FetchParams)
 		if err != nil {
 			return fmt.Errorf("failed to fetch inventory data: %w", err)
 		}
@@ -68,7 +58,7 @@ func fetchInventoryByProductID(
 		}
 	}
 
-	return bfbio.WriteFile(params.FolderPath, fileName, inventoryBytes)
+	return bfbio.WriteFile(params.StoreParams.FolderPath, fileName, inventoryBytes)
 }
 
 func readInventoryFromFile(file string) ([]byte, error) {
@@ -80,14 +70,15 @@ func readInventoryFromFile(file string) ([]byte, error) {
 	return inventoryByteArray, nil
 }
 
-func fetchInventoryDataByURL(fetchURL string, clientToken string, fetchSleepTime float64) ([]byte, error) {
+func FetchInventoriesFromAPI(id string, params params.FetchParams) ([]byte, error) {
+	fetchURL := params.URL + id + params.QueryParams
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: where can I get this header from? Move it to env var
-	req.Header.Add("X-Client-Id", clientToken)
+	req.Header.Add("X-Client-Id", params.ClientToken)
 
 	client := &http.Client{}
 	response, err := client.Do(req)
@@ -96,7 +87,7 @@ func fetchInventoryDataByURL(fetchURL string, clientToken string, fetchSleepTime
 	}
 	defer response.Body.Close()
 
-	time.Sleep(time.Duration(fetchSleepTime) * time.Second)
+	time.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

@@ -1,6 +1,8 @@
 package constants
 
 const (
+	// FIXME extract base folder path
+	// TODO meke it configurable
 	CategoryFolderPath = "./json-cache/"
 	CategoryFileName = "categories.json"
 	

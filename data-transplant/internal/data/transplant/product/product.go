@@ -24,7 +24,6 @@ func GetAllProducts(catIds []string, params params.FetchAndStoreParams, forceFet
 			catId,
 			params,
 			forceFetch,
-			fetchSleepTime,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error getting products for category: %s, %w", catId, err)
@@ -45,10 +44,9 @@ func getProductsByCatID(
 	categoryID string,
 	params params.FetchAndStoreParams,
 	forceFetch bool,
-	fetchSleepTime float64,
 ) ([]string, error) {
-	fileName := categoryID + params.FileNameExtension
-	filePath := filepath.Join(params.FolderPath, fileName)
+	fileName := categoryID + params.StoreParams.FileNameExtension
+	filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
 
 	// Check if products of category are already cached
 	isCached, err := bfbio.IsFileExists(filePath)
@@ -69,24 +67,24 @@ func getProductsByCatID(
 		if forceFetch {
 			log.Println("Force fetching products from URL")
 		}
-		prodContent, err = fetchProductsFromAPI(categoryID, params.PostPayload, params.FetchURL, fetchSleepTime)
+		prodContent, err = FetchProductsFromAPI(categoryID, params.FetchParams)
 		if err != nil {
 			return nil, fmt.Errorf("error reading or fetching products: %w", err)
 		}
 	}
 
-	productsIDs, err := extractProductIds(prodContent)
+	productsIDs, err := ExtractProductIds(prodContent)
 	if err != nil {
 		return nil, fmt.Errorf("error extracting product IDs: %w", err)
 	}
 
 	if forceFetch || !isCached {
-		err = bfbio.WriteFile(params.FolderPath, fileName, prodContent)
+		err = bfbio.WriteFile(params.StoreParams.FolderPath, fileName, prodContent)
 		if err != nil {
 			return nil, fmt.Errorf("error writing products file: %w", err)
 		}
 
-		log.Println("Category ID: ", categoryID, " Products fetched and written to file: ", filepath.Join(params.FolderPath, fileName))
+		log.Println("Category ID: ", categoryID, " Products fetched and written to file: ", filepath.Join(params.StoreParams.FolderPath, fileName))
 	}
 
 	return productsIDs, nil
@@ -96,9 +94,9 @@ func CleanUpIDs(ids []string) []string {
 	return filters.ApplyAllCleaner(ids)
 }
 
-func extractProductIds(pc []byte) ([]string, error) {
+func ExtractProductIds(rawJson []byte) ([]string, error) {
 	var productsResponse model.ProductResponse
-	err := json.Unmarshal(pc, &productsResponse)
+	err := json.Unmarshal(rawJson, &productsResponse)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling products: %w", err)
 	}
@@ -115,16 +113,16 @@ func extractProductIds(pc []byte) ([]string, error) {
 	return productsIDs, nil
 }
 
-func fetchProductsFromAPI(categoryId string, searchTemplate []byte, url string, fetchSleepTime float64) ([]byte, error) {
+func FetchProductsFromAPI(id string, params params.FetchParams) ([]byte, error) {
 	var searchJsonMap map[string]interface{}
-	json.Unmarshal(searchTemplate, &searchJsonMap)
+	json.Unmarshal(params.PostPayload, &searchJsonMap)
 
-	searchJsonMap["searchParameters"].(map[string]interface{})["input"] = categoryId
+	searchJsonMap["searchParameters"].(map[string]interface{})["input"] = id
 
 	payload, _ := json.Marshal(searchJsonMap)
 
 	res, err := http.Post(
-		url,
+		params.URL,
 		"application/json",
 		bytes.NewBuffer(payload),
 	)
@@ -133,7 +131,7 @@ func fetchProductsFromAPI(categoryId string, searchTemplate []byte, url string, 
 	}
 	defer res.Body.Close()
 
-	time.Sleep(time.Duration(fetchSleepTime) * time.Second)
+	time.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
 
 	prodContent, err := io.ReadAll(res.Body)
 	defer res.Body.Close()

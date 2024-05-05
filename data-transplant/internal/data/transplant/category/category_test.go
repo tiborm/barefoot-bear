@@ -7,21 +7,6 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
-func TestGetCategories(t *testing.T) {
-	// Test data
-	url := "http://localhost:8080/categories"
-	outputDirectory := "test"
-	fileName := "categories.json"
-	forceFetch := false
-
-	// Test fetching categories
-	_, err := GetCategories(url, outputDirectory, fileName, forceFetch)
-
-	if err != nil {
-		t.Errorf("Failed to fetch categories: %s", err.Error())
-	}
-
-}
 
 func TestExtractingSubCategories(t *testing.T) {
 	// Test data
