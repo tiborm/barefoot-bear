@@ -1,74 +1,12 @@
 package inventory
 
 import (
-	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"path/filepath"
 	"time"
 
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
-
-func GetAllInventoryData(
-	allProductIDs []string,
-	params params.FetchAndStoreParams,
-) error {
-	for _, prodId := range allProductIDs {
-		err := getInventoryByProductID(
-			prodId,
-			params,
-		)
-		if err != nil {
-			log.Println("failed to get inventory data for prduct: %w, %w", prodId, err)
-			return err
-		}
-		log.Println("Inventory data fetched and cached for product: ", prodId)
-	}
-
-	return nil
-}
-
-func getInventoryByProductID(
-	productID string,
-	params params.FetchAndStoreParams,
-) error {
-	fileName := productID + params.StoreParams.FileNameExtension
-	filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
-	var inventoryBytes []byte
-
-	isCached, err := bfbio.IsFileExists(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to verify inventory file in cache: %w", err)
-	}
-
-	if params.FetchParams.ForceFetch || !isCached {
-		inventoryBytes, err = FetchInventoriesFromAPI(productID, params.FetchParams)
-		if err != nil {
-			return fmt.Errorf("failed to fetch inventory data: %w", err)
-		}
-	}
-
-	if len(inventoryBytes) == 0 {
-		inventoryBytes, err = readInventoryFromFile(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to read cached inventory file: %w", err)
-		}
-	}
-
-	return bfbio.WriteFile(params.StoreParams.FolderPath, fileName, inventoryBytes)
-}
-
-func readInventoryFromFile(file string) ([]byte, error) {
-	inventoryByteArray, err := bfbio.GetFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return inventoryByteArray, nil
-}
 
 func FetchInventoriesFromAPI(id string, params params.FetchParams) ([]byte, error) {
 	fetchURL := params.URL + id + params.QueryParams
