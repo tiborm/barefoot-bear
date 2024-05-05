@@ -41,11 +41,9 @@ func init() {
 	flag.Float64Var(&fetchSleepTime, "fetchSleepTime", float64(sleepTimeInt), "The sleep time between fetches. Environment variable: FETCH_SLEEP_TIME")
 }
 
-func init() {
-	flag.Parse()
-}
-
 func main() {
+	flag.Parse()
+
 	categoryParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
 			FolderPath:        constants.CategoryFolderPath,
@@ -60,7 +58,10 @@ func main() {
 		IDExtractorFn: category.GetCategoryIDs,
 	}
 
-	ids, err := transplant.FetchAndStore(categoryParams, nil)
+	ids, err := transplant.FetchAndStore(nil, categoryParams)
+	if err != nil {
+		log.Fatalf("Error during category transplant operation: %v", err)
+	}
 
 	productsParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
@@ -77,7 +78,10 @@ func main() {
 		IDExtractorFn: product.ExtractProductIds,
 	}
 
-	ids, err = transplant.FetchAndStore(productsParams, ids)
+	ids, err = transplant.FetchAndStore(ids, productsParams)
+	if err != nil {
+		log.Fatalf("Error during product transplant operation: %v", err)
+	}
 
 	inventoryParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
@@ -93,9 +97,9 @@ func main() {
 		FetchFn: inventory.FetchInventoriesFromAPI,
 	}
 
-	_, err = transplant.FetchAndStore(inventoryParams, ids)
+	_, err = transplant.FetchAndStore(ids, inventoryParams)
 	if err != nil {
-		log.Fatalf("Error during transplant operation: %v", err)
+		log.Fatalf("Error during inventory transplant operation: %v", err)
 	}
 
 	log.Println("Transplant operation completed successfully.")

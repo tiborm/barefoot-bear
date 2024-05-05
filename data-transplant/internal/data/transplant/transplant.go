@@ -9,7 +9,7 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func FetchAndStore(params params.FetchAndStoreParams, IDs []string) ([]string, error) {
+func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, error) {
 	var fetchedBytes []byte
 	var id string
 	var iterations int
