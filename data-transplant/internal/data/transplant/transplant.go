@@ -11,7 +11,7 @@ import (
 
 func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, error) {
 	var fetchedBytes []byte
-	var id string
+	var currentID string
 	var iterations int
 	allProductIDs := make([]string, 0)
 
@@ -22,13 +22,11 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 	}
 
 	for i := 0; i < iterations; i++ {
-		if IDs == nil {
-			id = ""
-		} else {
-			id = IDs[i]
+		if IDs != nil {
+			currentID = IDs[i]	
 		}
 
-		fileName := fmt.Sprintf("%s%s", id, params.StoreParams.FileNameExtension)
+		fileName := fmt.Sprintf("%s%s", currentID, params.StoreParams.FileNameExtension)
 		filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
 
 		isCached, err := bfbio.IsFileExists(filePath)
@@ -37,7 +35,7 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 		}
 
 		if params.FetchParams.ForceFetch || !isCached {
-			fetchedBytes, err := params.FetchFn(id, params.FetchParams)
+			fetchedBytes, err := params.FetchFn(currentID, params.FetchParams)
 			if err != nil {
 				return nil, fmt.Errorf("error occurred while fetching: %w", err)
 			}
@@ -48,7 +46,7 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 		}
 
 		if len(fetchedBytes) == 0 {
-			fetchedBytes, err = readCategoriesFromFile(filePath)
+			fetchedBytes, err = bfbio.GetFile(filePath)
 			if err != nil {
 				return nil, fmt.Errorf("error reading file: %w", err)
 			}
@@ -65,11 +63,3 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 	return allProductIDs, nil
 }
 
-func readCategoriesFromFile(file string) ([]byte, error) {
-	categoriesByteArray, err := bfbio.GetFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return categoriesByteArray, nil
-}

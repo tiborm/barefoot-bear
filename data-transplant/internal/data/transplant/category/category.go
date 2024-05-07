@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
@@ -34,8 +33,6 @@ func GetCategoryIDs(rawJson []byte) ([]string, error) {
 
 	allCategories := *getSubIDsInDepth(categories, &[]string{})
 
-	allCategories = cleanUpIDs(allCategories)
-
 	log.Printf("Fetched %d categories in total, including sub-categories", len(allCategories))
 	return allCategories, nil
 }
@@ -52,6 +49,3 @@ func getSubIDsInDepth(categories []model.Category, ids *[]string) *[]string {
 	return ids
 }
 
-func cleanUpIDs(ids []string) []string {
-	return filters.ApplyAllCleaner(ids)
-}

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/model"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
@@ -59,11 +58,5 @@ func ExtractProductIds(rawJson []byte) ([]string, error) {
 		productsIDs[i] = product.Product.Id
 	}
 
-	productsIDs = cleanUpIDs(productsIDs)
-
 	return productsIDs, nil
-}
-
-func cleanUpIDs(ids []string) []string {
-	return filters.ApplyAllCleaner(ids)
 }

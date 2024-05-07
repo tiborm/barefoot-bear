@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"net/url"
 
 	"github.com/tiborm/barefoot-bear/constants"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant"
@@ -24,8 +25,29 @@ var (
 	clientToken      string
 )
 
-// init initializes the fetchSleepTime and forceFetch variables from environment variables or command-line flags.
-func init() {
+type Transp struct {
+	CategoryURL      string
+	ProductSearchURL string
+	InventoryURL     string
+	ForceFetch       bool
+	FetchSleepTime   float64
+	ClientToken      string
+}
+
+// init initializes the categoryURL, productSearchURL, inventoryURL, forceFetch, fetchSleepTime and clientToken variables.
+// It also sets the default values. The default values are read from the environment variables.
+// If the environment variables are not set, the default values are used.
+//
+// The function also get the flag values if they are provided.
+//
+// The default values are:
+// - categoryURL: CATEGORY_URL environment variable or "http://localhost:8080/categories"
+// - productSearchURL: PRODUCT_SEARCH_URL environment variable or "http://localhost:8080/products/search"
+// - inventoryURL: INVENTORY_URL environment variable or "http://localhost:8080/inventory/"
+// - forceFetch: FORCE_FETCH environment variable or false
+// - fetchSleepTime: FETCH_SLEEP_TIME environment variable or 5
+// - clientToken: CLIENT_TOKEN environment variable or "client_token"
+func InitTransp() *Transp {
 	categoryURL = config.GetEnvAsString("CATEGORY_URL")
 	productSearchURL = config.GetEnvAsString("PRODUCT_SEARCH_URL")
 	inventoryURL = config.GetEnvAsString("INVENTORY_URL")
@@ -39,11 +61,48 @@ func init() {
 	flag.StringVar(&clientToken, "clientToken", clientToken, "The client token to use for fetching inventory data. Environment variable: CLIENT_TOKEN")
 	flag.BoolVar(&forceFetch, "forceFetch", forceFetchBool, "Whether to force fetch or not. Environment variable: FORCE_FETCH")
 	flag.Float64Var(&fetchSleepTime, "fetchSleepTime", float64(sleepTimeInt), "The sleep time between fetches. Environment variable: FETCH_SLEEP_TIME")
-}
 
-func main() {
 	flag.Parse()
 
+	return &Transp{
+		CategoryURL:      categoryURL,
+		ProductSearchURL: productSearchURL,
+		InventoryURL:     inventoryURL,
+		ForceFetch:       forceFetchBool,
+		FetchSleepTime:   fetchSleepTime,
+		ClientToken:      clientToken,
+	}
+}
+
+func (t Transp) Validate() {
+	// Validate URLs
+	_, err := url.ParseRequestURI(t.CategoryURL)
+	if err != nil {
+		log.Fatalf("Invalid category URL: %v", err)
+	}
+
+	_, err = url.ParseRequestURI(t.ProductSearchURL)
+	if err != nil {
+		log.Fatalf("Invalid product search URL: %v", err)
+	}
+
+	_, err = url.ParseRequestURI(t.InventoryURL)
+	if err != nil {
+		log.Fatalf("Invalid inventory URL: %v", err)
+	}
+
+	// Validate client token
+	if t.ClientToken == "" {
+		log.Fatal("Client token is empty")
+	}
+
+	// Validate fetch sleep time
+	if t.FetchSleepTime < 0 {
+		log.Fatal("Fetch sleep time cannot be negative")
+	}
+}
+
+func (t Transp) Run() {
 	categoryParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
 			FolderPath:        constants.CategoryFolderPath,
@@ -103,4 +162,10 @@ func main() {
 	}
 
 	log.Println("Transplant operation completed successfully.")
+}
+
+func main() {
+	transp := InitTransp()
+	transp.Validate()
+	transp.Run()
 }

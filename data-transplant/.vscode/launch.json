@@ -11,7 +11,7 @@
             "mode": "auto",
             "program": "./cmd/cli/transp.go",
             "env": {
-                "CLIENT_TOKEN": "1bc9a57a-921f-4e76-b810-d8c3e4a81070"
+                "CLIENT_TOKEN": ""
             }
         }
     ]
