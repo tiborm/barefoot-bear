@@ -27,7 +27,9 @@ func FetchCategoriesFromAPI(id string, params params.FetchParams) ([]byte, error
 
 func GetCategoryIDs(rawJson []byte) ([]string, error) {
 	var categories []model.Category
-	json.Unmarshal(rawJson, &categories)
+	if err := json.Unmarshal(rawJson, &categories); err != nil {
+		return nil, err
+	}
 
 	log.Printf("Fetched %d main categories", len(categories))
 
@@ -48,4 +50,3 @@ func getSubIDsInDepth(categories []model.Category, ids *[]string) *[]string {
 
 	return ids
 }
-

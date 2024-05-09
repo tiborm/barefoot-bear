@@ -121,6 +121,7 @@ func (t Transp) Run() {
 	if err != nil {
 		log.Fatalf("Error during category transplant operation: %v", err)
 	}
+	log.Printf("Fetched %v categories.", len(ids))
 
 	productsParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
@@ -141,6 +142,7 @@ func (t Transp) Run() {
 	if err != nil {
 		log.Fatalf("Error during product transplant operation: %v", err)
 	}
+	log.Printf("Fetched %v product data record", len(ids))
 
 	inventoryParams := params.FetchAndStoreParams{
 		StoreParams: params.StoreParams{
@@ -152,6 +154,7 @@ func (t Transp) Run() {
 			QueryParams:    constants.InventoryQueryParams,
 			ForceFetch:     forceFetch,
 			FetchSleepTime: fetchSleepTime,
+			ClientToken:    clientToken,
 		},
 		FetchFn: inventory.FetchInventoriesFromAPI,
 	}
@@ -160,6 +163,7 @@ func (t Transp) Run() {
 	if err != nil {
 		log.Fatalf("Error during inventory transplant operation: %v", err)
 	}
+	log.Printf("Fetched %v inventory data record.", len(ids))
 
 	log.Println("Transplant operation completed successfully.")
 }

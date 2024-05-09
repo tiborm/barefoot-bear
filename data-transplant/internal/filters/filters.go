@@ -1,7 +1,6 @@
 package filters // CleanUpCategories applies the given criteria to the list of categories
 
 import (
-	"log"
 	"regexp"
 )
 
@@ -22,8 +21,6 @@ func CleanUpIDs(IDs []string, cleaners []FilterFn) []string {
 		IDs = clean(IDs)
 	}
 
-	log.Printf("Remaining IDs: %d", len(IDs))
-	
 	return IDs
 }
 
@@ -39,15 +36,13 @@ func RemoveDulications(IDs []string) []string {
 		}
 	}
 
-	log.Printf("Removed %d duplicate IDs", len(IDs)-len(result))
-
 	return result
 }
 
 // RemoveItemsWithSpecChars removes items from the list that contain special characters
 func RemoveItemsWithSpecChars(IDs []string) []string {
 	result := []string{}
-	
+
 	pattern := "^[a-zA-Z0-9]+$"
 	re, _ := regexp.Compile(pattern)
 
@@ -56,8 +51,6 @@ func RemoveItemsWithSpecChars(IDs []string) []string {
 			result = append(result, cat)
 		}
 	}
-
-	log.Printf("Removed %d IDs with special characters", len(IDs)-len(result))
 
 	return result
 }

@@ -1,6 +1,7 @@
 package inventory
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -15,7 +16,6 @@ func FetchInventoriesFromAPI(id string, params params.FetchParams) ([]byte, erro
 		return nil, err
 	}
 
-	// TODO: where can I get this header from? Move it to env var
 	req.Header.Add("X-Client-Id", params.ClientToken)
 
 	client := &http.Client{}
@@ -25,11 +25,19 @@ func FetchInventoriesFromAPI(id string, params params.FetchParams) ([]byte, erro
 	}
 	defer response.Body.Close()
 
-	time.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
+	var body []byte
+	switch {
+		case response.StatusCode == http.StatusOK:
+			// Sleep for a while before fetching the next inventory
+			time.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
+			body, err = io.ReadAll(response.Body)
+			if err != nil {
+				return nil, err
+			}
+		case response.StatusCode == http.StatusNotFound:
+			return nil, fmt.Errorf("inventory not found for ID: %s", id)
+		case response.StatusCode == http.StatusUnauthorized:
+			return nil, fmt.Errorf("unauthorized access to inventory for ID: %s\nClient token expired or missing", id)
 	}
 	return body, nil
 }

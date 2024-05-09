@@ -34,8 +34,8 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 			return nil, fmt.Errorf("failed to verify file in cache: %w", err)
 		}
 
-		if params.FetchParams.ForceFetch || !isCached {
-			fetchedBytes, err := params.FetchFn(currentID, params.FetchParams)
+		if (params.FetchParams.ForceFetch || !isCached) && params.FetchFn != nil {
+			fetchedBytes, err = params.FetchFn(currentID, params.FetchParams)
 			if err != nil {
 				return nil, fmt.Errorf("error occurred while fetching: %w", err)
 			}
@@ -45,21 +45,23 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 			}
 		}
 
-		if len(fetchedBytes) == 0 {
+		if len(fetchedBytes) == 0 && isCached {
 			fetchedBytes, err = bfbio.GetFile(filePath)
 			if err != nil {
 				return nil, fmt.Errorf("error reading file: %w", err)
 			}
 		}
 
-		extractedIDs, err := params.IDExtractorFn(fetchedBytes)
-		if err != nil {
-			return nil, fmt.Errorf("error extracting IDs: %w", err)
+		var extractedIDs []string
+		if params.IDExtractorFn != nil {
+			extractedIDs, err = params.IDExtractorFn(fetchedBytes)
+			if err != nil {
+				return nil, fmt.Errorf("error extracting IDs: %w", err)
+			}
+			allProductIDs = append(allProductIDs, filters.ApplyAllCleaner(extractedIDs)...)
 		}
-
-		fmt.Println("Cleaning IDs")
-		allProductIDs = append(allProductIDs, filters.ApplyAllCleaner(extractedIDs)...)
 	}
+
 	return allProductIDs, nil
 }
 
