@@ -13,6 +13,7 @@ import (
 	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
 	"github.com/tiborm/barefoot-bear/internal/params"
 	"github.com/tiborm/barefoot-bear/internal/utils/config"
+	"github.com/tiborm/barefoot-bear/internal/data/transplant/filehandler"
 )
 
 // fetchSleepTime and forceFetch are configurable parameters for the transplant operation.
@@ -117,7 +118,11 @@ func (t Transp) Run() {
 		IDExtractorFn: category.GetCategoryIDs,
 	}
 
-	ids, err := transplant.FetchAndStore(nil, categoryParams)
+	fileHandler := filehandler.FileHandler{}
+
+	transplantService := transplant.NewTransplantService(fileHandler)
+
+	ids, err := transplantService.FetchAndStore(nil, categoryParams)
 	if err != nil {
 		log.Fatalf("Error during category transplant operation: %v", err)
 	}
@@ -138,7 +143,7 @@ func (t Transp) Run() {
 		IDExtractorFn: product.ExtractProductIds,
 	}
 
-	ids, err = transplant.FetchAndStore(ids, productsParams)
+	ids, err = transplantService.FetchAndStore(ids, productsParams)
 	if err != nil {
 		log.Fatalf("Error during product transplant operation: %v", err)
 	}
@@ -159,7 +164,7 @@ func (t Transp) Run() {
 		FetchFn: inventory.FetchInventoriesFromAPI,
 	}
 
-	_, err = transplant.FetchAndStore(ids, inventoryParams)
+	_, err = transplantService.FetchAndStore(ids, inventoryParams)
 	if err != nil {
 		log.Fatalf("Error during inventory transplant operation: %v", err)
 	}

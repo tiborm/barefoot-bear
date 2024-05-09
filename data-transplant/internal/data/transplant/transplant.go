@@ -4,12 +4,24 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/bfbio"
 	"github.com/tiborm/barefoot-bear/internal/filters"
 	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, error) {
+type FileHandler interface {
+	IsFileExists(filePath string) (bool, error)
+	WriteFile(folderPath, fileName string, data []byte) error
+	GetFile(filePath string) ([]byte, error)
+}
+type TransplantService struct {
+	file FileHandler
+}
+
+func NewTransplantService(fileHandler FileHandler) *TransplantService {
+	return &TransplantService{file: fileHandler}
+}
+
+func (ts *TransplantService) FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, error) {
 	var fetchedBytes []byte
 	var currentID string
 	var iterations int
@@ -23,13 +35,13 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 
 	for i := 0; i < iterations; i++ {
 		if IDs != nil {
-			currentID = IDs[i]	
+			currentID = IDs[i]
 		}
 
 		fileName := fmt.Sprintf("%s%s", currentID, params.StoreParams.FileNameExtension)
 		filePath := filepath.Join(params.StoreParams.FolderPath, fileName)
 
-		isCached, err := bfbio.IsFileExists(filePath)
+		isCached, err := ts.file.IsFileExists(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to verify file in cache: %w", err)
 		}
@@ -39,14 +51,14 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 			if err != nil {
 				return nil, fmt.Errorf("error occurred while fetching: %w", err)
 			}
-			err = bfbio.WriteFile(params.StoreParams.FolderPath, fileName, fetchedBytes)
+			err = ts.file.WriteFile(params.StoreParams.FolderPath, fileName, fetchedBytes)
 			if err != nil {
 				return nil, fmt.Errorf("error writing to file: %w", err)
 			}
 		}
 
 		if len(fetchedBytes) == 0 && isCached {
-			fetchedBytes, err = bfbio.GetFile(filePath)
+			fetchedBytes, err = ts.file.GetFile(filePath)
 			if err != nil {
 				return nil, fmt.Errorf("error reading file: %w", err)
 			}
@@ -64,4 +76,3 @@ func FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, e
 
 	return allProductIDs, nil
 }
-
