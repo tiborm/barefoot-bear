@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/tiborm/barefoot-bear/internal/filters"
-	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
 type FileHandler interface {
@@ -21,11 +20,11 @@ func NewTransplantService(fileHandler FileHandler) *TransplantService {
 	return &TransplantService{file: fileHandler}
 }
 
-func (ts *TransplantService) FetchAndStore(IDs []string, params params.FetchAndStoreParams) ([]string, error) {
+func (ts *TransplantService) FetchAndStore(IDs []string, params FetchAndStoreParams) ([]string, error) {
 	var fetchedBytes []byte
 	var currentID string
 	var iterations int
-	allProductIDs := make([]string, 0)
+	allIDs := make([]string, 0)
 
 	if IDs == nil {
 		iterations = 1
@@ -46,8 +45,8 @@ func (ts *TransplantService) FetchAndStore(IDs []string, params params.FetchAndS
 			return nil, fmt.Errorf("failed to verify file in cache: %w", err)
 		}
 
-		if (params.FetchParams.ForceFetch || !isCached) && params.FetchFn != nil {
-			fetchedBytes, err = params.FetchFn(currentID, params.FetchParams)
+		if (params.FetchParams.ForceFetch || !isCached) {
+			fetchedBytes, err = params.Fetcher.Fetch(currentID, params.FetchParams)
 			if err != nil {
 				return nil, fmt.Errorf("error occurred while fetching: %w", err)
 			}
@@ -64,15 +63,14 @@ func (ts *TransplantService) FetchAndStore(IDs []string, params params.FetchAndS
 			}
 		}
 
-		var extractedIDs []string
-		if params.IDExtractorFn != nil {
-			extractedIDs, err = params.IDExtractorFn(fetchedBytes)
-			if err != nil {
-				return nil, fmt.Errorf("error extracting IDs: %w", err)
-			}
-			allProductIDs = append(allProductIDs, filters.ApplyAllCleaner(extractedIDs)...)
+		var extractedIDs []string		
+		extractedIDs, err = params.Fetcher.GetIDs(fetchedBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error extracting IDs: %w", err)
 		}
+		allIDs = append(allIDs, filters.ApplyAllCleaner(extractedIDs)...)
+		
 	}
 
-	return allProductIDs, nil
+	return allIDs, nil
 }

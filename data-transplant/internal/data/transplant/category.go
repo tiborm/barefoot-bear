@@ -1,4 +1,4 @@
-package category
+package transplant
 
 import (
 	"encoding/json"
@@ -7,10 +7,21 @@ import (
 	"net/http"
 
 	"github.com/tiborm/barefoot-bear/internal/model"
-	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func FetchCategoriesFromAPI(id string, params params.FetchParams) ([]byte, error) {
+type Getter interface {
+	Get(url string) (resp *http.Response, err error)
+}
+
+type CategoryFetcher struct {
+	getter Getter
+}
+
+func NewCategoryFetcher(getter Getter) *CategoryFetcher {
+	return &CategoryFetcher{getter: getter}
+}
+
+func (cf CategoryFetcher) Fetch(id string, params FetchParams) ([]byte, error) {
 	response, err := http.Get(params.URL)
 	if err != nil {
 		return nil, err
@@ -25,7 +36,7 @@ func FetchCategoriesFromAPI(id string, params params.FetchParams) ([]byte, error
 	return categoriesByteArray, nil
 }
 
-func GetCategoryIDs(rawJson []byte) ([]string, error) {
+func (cf CategoryFetcher) GetIDs(rawJson []byte) ([]string, error) {
 	var categories []model.Category
 	if err := json.Unmarshal(rawJson, &categories); err != nil {
 		return nil, err

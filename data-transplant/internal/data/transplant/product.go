@@ -1,4 +1,4 @@
-package product
+package transplant
 
 import (
 	"bytes"
@@ -9,10 +9,26 @@ import (
 	"time"
 
 	"github.com/tiborm/barefoot-bear/internal/model"
-	"github.com/tiborm/barefoot-bear/internal/params"
 )
 
-func FetchProductsFromAPI(id string, params params.FetchParams) ([]byte, error) {
+type Sleeper interface {
+	Sleep(time.Duration)
+}
+
+type ProductFetcher struct {
+	sleeper Sleeper
+	poster Poster
+}
+
+type Poster interface {
+	Post(url, contentType string, body io.Reader) (*http.Response, error)
+}
+
+func NewProductFetcher(sleeper Sleeper, poster Poster) *ProductFetcher {
+	return &ProductFetcher{sleeper: sleeper, poster: poster}
+}
+
+func (pf ProductFetcher) Fetch(id string, params FetchParams) ([]byte, error) {
 	var searchJsonMap map[string]interface{}
 	json.Unmarshal(params.PostPayload, &searchJsonMap)
 
@@ -20,7 +36,7 @@ func FetchProductsFromAPI(id string, params params.FetchParams) ([]byte, error) 
 
 	payload, _ := json.Marshal(searchJsonMap)
 
-	res, err := http.Post(
+	res, err := pf.poster.Post(
 		params.URL,
 		"application/json",
 		bytes.NewBuffer(payload),
@@ -30,7 +46,7 @@ func FetchProductsFromAPI(id string, params params.FetchParams) ([]byte, error) 
 	}
 	defer res.Body.Close()
 
-	time.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
+	pf.sleeper.Sleep(time.Duration(params.FetchSleepTime) * time.Second)
 
 	prodContent, err := io.ReadAll(res.Body)
 	defer res.Body.Close()
@@ -41,7 +57,7 @@ func FetchProductsFromAPI(id string, params params.FetchParams) ([]byte, error) 
 	return prodContent, nil
 }
 
-func ExtractProductIds(rawJson []byte) ([]string, error) {
+func (pf ProductFetcher) GetIDs(rawJson []byte) ([]string, error) {
 	var productsResponse model.ProductResponse
 	err := json.Unmarshal(rawJson, &productsResponse)
 	if err != nil {

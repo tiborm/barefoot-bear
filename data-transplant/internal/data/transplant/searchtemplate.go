@@ -1,4 +1,4 @@
-package searchtemplate
+package transplant
 
 var SearchJSONTemplate = []byte(`{
     "searchParameters": {

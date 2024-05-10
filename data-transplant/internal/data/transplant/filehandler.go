@@ -1,4 +1,4 @@
-package filehandler
+package transplant
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 )
 
-type FileHandler struct {}
+type FileHandlerService struct{}
 
-func (fh FileHandler) GetFile(filePath string) ([]byte, error) {
+func (fh FileHandlerService) GetFile(filePath string) ([]byte, error) {
 	res, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func (fh FileHandler) GetFile(filePath string) ([]byte, error) {
 	return res, nil
 }
 
-func (fh FileHandler) IsFileExists(filePath string) (bool, error) {
+func (fh FileHandlerService) IsFileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -30,7 +30,7 @@ func (fh FileHandler) IsFileExists(filePath string) (bool, error) {
 	return true, nil
 }
 
-func (fh FileHandler) WriteFile(outputDirectory string, fileName string, content []byte) error {
+func (fh FileHandlerService) WriteFile(outputDirectory string, fileName string, content []byte) error {
 	if err := createDirIfNotExists(outputDirectory); err != nil {
 		return err
 	}

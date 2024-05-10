@@ -2,18 +2,15 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/tiborm/barefoot-bear/constants"
 	"github.com/tiborm/barefoot-bear/internal/data/transplant"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/category"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/inventory"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/product"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/searchtemplate"
-	"github.com/tiborm/barefoot-bear/internal/params"
 	"github.com/tiborm/barefoot-bear/internal/utils/config"
-	"github.com/tiborm/barefoot-bear/internal/data/transplant/filehandler"
 )
 
 // fetchSleepTime and forceFetch are configurable parameters for the transplant operation.
@@ -33,6 +30,24 @@ type Transp struct {
 	ForceFetch       bool
 	FetchSleepTime   float64
 	ClientToken      string
+}
+
+type sleeper struct{}
+
+func (s sleeper) Sleep(time.Duration) {
+	time.Sleep(time.Duration(fetchSleepTime) * time.Second)
+}
+
+type poster struct{}
+
+func (p poster) Post(url, contentType string, body io.Reader) (*http.Response, error) {
+	return http.Post(url, contentType, body)
+}
+
+type getter struct{}
+
+func (g getter) Get(url string) (resp *http.Response, err error) {
+	return http.Get(url)
 }
 
 // init initializes the categoryURL, productSearchURL, inventoryURL, forceFetch, fetchSleepTime and clientToken variables.
@@ -104,21 +119,20 @@ func (t Transp) Validate() {
 }
 
 func (t Transp) Run() {
-	categoryParams := params.FetchAndStoreParams{
-		StoreParams: params.StoreParams{
+	categoryParams := transplant.FetchAndStoreParams{
+		StoreParams: transplant.StoreParams{
 			FolderPath:        constants.CategoryFolderPath,
 			FileNameExtension: constants.CategoryFileName,
 		},
-		FetchParams: params.FetchParams{
+		FetchParams: transplant.FetchParams{
 			URL:            categoryURL,
 			ForceFetch:     forceFetch,
 			FetchSleepTime: fetchSleepTime,
 		},
-		FetchFn:       category.FetchCategoriesFromAPI,
-		IDExtractorFn: category.GetCategoryIDs,
+		Fetcher: transplant.NewCategoryFetcher(getter{}),
 	}
 
-	fileHandler := filehandler.FileHandler{}
+	fileHandler := transplant.FileHandlerService{}
 
 	transplantService := transplant.NewTransplantService(fileHandler)
 
@@ -128,19 +142,18 @@ func (t Transp) Run() {
 	}
 	log.Printf("Fetched %v categories.", len(ids))
 
-	productsParams := params.FetchAndStoreParams{
-		StoreParams: params.StoreParams{
+	productsParams := transplant.FetchAndStoreParams{
+		StoreParams: transplant.StoreParams{
 			FolderPath:        constants.ProductsFolderPath,
 			FileNameExtension: constants.ProductsFileExtension,
 		},
-		FetchParams: params.FetchParams{
+		FetchParams: transplant.FetchParams{
 			URL:            productSearchURL,
-			PostPayload:    searchtemplate.SearchJSONTemplate,
+			PostPayload:    transplant.SearchJSONTemplate,
 			ForceFetch:     forceFetch,
 			FetchSleepTime: fetchSleepTime,
 		},
-		FetchFn:       product.FetchProductsFromAPI,
-		IDExtractorFn: product.ExtractProductIds,
+		Fetcher: transplant.NewProductFetcher(sleeper{}, poster{}),
 	}
 
 	ids, err = transplantService.FetchAndStore(ids, productsParams)
@@ -149,19 +162,19 @@ func (t Transp) Run() {
 	}
 	log.Printf("Fetched %v product data record", len(ids))
 
-	inventoryParams := params.FetchAndStoreParams{
-		StoreParams: params.StoreParams{
+	inventoryParams := transplant.FetchAndStoreParams{
+		StoreParams: transplant.StoreParams{
 			FolderPath:        constants.InventoryFolderPath,
 			FileNameExtension: constants.InventoryFileExtension,
 		},
-		FetchParams: params.FetchParams{
+		FetchParams: transplant.FetchParams{
 			URL:            inventoryURL,
 			QueryParams:    constants.InventoryQueryParams,
 			ForceFetch:     forceFetch,
 			FetchSleepTime: fetchSleepTime,
 			ClientToken:    clientToken,
 		},
-		FetchFn: inventory.FetchInventoriesFromAPI,
+		Fetcher: transplant.NewInventoryFetcher(http.Client{}),
 	}
 
 	_, err = transplantService.FetchAndStore(ids, inventoryParams)

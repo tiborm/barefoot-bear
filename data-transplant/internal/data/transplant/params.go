@@ -1,4 +1,4 @@
-package params
+package transplant
 
 type FetchParams struct {
 	URL            string
@@ -13,9 +13,13 @@ type StoreParams struct {
 	FolderPath        string
 	FileNameExtension string
 }
+
+type Fetcher interface {
+	Fetch(id string, params FetchParams) ([]byte, error)
+	GetIDs(rawJson []byte) ([]string, error)
+}
 type FetchAndStoreParams struct {
-	FetchParams   FetchParams
-	StoreParams   StoreParams
-	IDExtractorFn func([]byte) ([]string, error)
-	FetchFn       func(id string, params FetchParams) ([]byte, error)
+	FetchParams FetchParams
+	StoreParams StoreParams
+	Fetcher     Fetcher
 }
