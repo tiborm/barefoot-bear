@@ -1,6 +1,6 @@
-import { categoriesJSON } from "./json-reader.js"
+import { categoriesJSON } from "./json-reader.js";
 
-const COLLECTION_NAME = "categories"
+const collectionName = "categories";
 
 const schema = {
     $jsonSchema: {
@@ -22,55 +22,86 @@ const schema = {
             }
         }
     }
-}
+};
 
 const checkCategoriesCollection = async (db) => {
     try {
-        const collectionsResult = await db.listCollections({}, { nameOnly: true }).toArray()
+        const collectionsResult = await db.listCollections({}, { nameOnly: true }).toArray();
 
         if (collectionsResult.find(collection => collection.name === "categories")) {
-            console.log("Collection categories exists")
+            console.log("Collection categories exists");
         } else {
-            await db.createCollection("categories")
-            console.log("Collection categories created")
+            await db.createCollection("categories");
+            console.log("Collection categories created");
         }
     } catch (error) {
-        console.trace("Error checking collections", error)
-        process.exit(1)
+        console.trace("Error checking collections", error);
+        process.exit(1);
     }
-}
+};
+
+const checkIfDataExist = async (collection) => {
+    try {
+        if (await collection.countDocuments({}) > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        console.trace("Error fetching data", error);
+        process.exit(1);
+    }
+};
+
+const prepareForInsertion = async (db, isForced) => {
+    const collection = db.collection(collectionName);
+
+    if (await checkIfDataExist(collection)) {
+        if (isForced) {
+            console.warn("Forced seeding");
+            collection.deleteMany({});
+
+            return;
+        }
+
+        console.error(
+            `\nCategories data already exists.
+            If you want to force seeding, please run the command with --forced-seed flag.
+            or use FORCED_SEED=true npm start.`.replace(/^ +/gm, '')
+        );
+        process.exit(1);
+    }
+};
 
 const applySchemaValidation = async (db, collectionName, schema) => {
     try {
         await db.command({
             collMod: collectionName,
             validator: schema
-        })
+        });
 
-        console.log("Schema created successfully")
+        console.log("Validation schema applied successfully");
     } catch (error) {
-        console.trace("Error creating schema", error)
-        process.exit(1)
+        console.trace("Error creating schema", error);
+        process.exit(1);
     }
-
-}
+};
 
 const insertCategories = async (db, categories) => {
     try {
-        const result = await db.collection(COLLECTION_NAME).insertMany(categories)
-        console.log(`${result.insertedCount} categories inserted successfully`)
+        const result = await db.collection(collectionName).insertMany(categories);
+        console.log(`${result.insertedCount} categories inserted successfully`);
     } catch (error) {
-        console.trace("Error inserting categories", error)
-        process.exit(1)
+        console.trace("Error inserting categories", error);
+        process.exit(1);
     }
-}
+};
 
+const seedCategories = async (db, isForced = false) => {
+    await checkCategoriesCollection(db);
+    await applySchemaValidation(db, collectionName, schema);
+    await prepareForInsertion(db, isForced);
+    await insertCategories(db, categoriesJSON);
+};
 
-
-const seedCategories = async (db) => {
-    await checkCategoriesCollection(db)
-    await applySchemaValidation(db, COLLECTION_NAME, schema)
-    await insertCategories(db, categoriesJSON)
-}
-
-export { seedCategories }
+export { seedCategories };
