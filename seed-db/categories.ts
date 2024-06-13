@@ -1,4 +1,5 @@
-import { categoriesJSON } from "./json-reader.js";
+import { Collection, Db } from "mongodb";
+import { categoriesJSON } from "./json-reader";
 
 const collectionName = "categories";
 
@@ -24,7 +25,7 @@ const schema = {
     }
 };
 
-const checkCategoriesCollection = async (db) => {
+const checkCategoriesCollection = async (db: Db) => {
     try {
         const collectionsResult = await db.listCollections({}, { nameOnly: true }).toArray();
 
@@ -40,7 +41,7 @@ const checkCategoriesCollection = async (db) => {
     }
 };
 
-const checkIfDataExist = async (collection) => {
+const checkIfDataExist = async (collection: Collection) => {
     try {
         if (await collection.countDocuments({}) > 0) {
             return true;
@@ -53,7 +54,7 @@ const checkIfDataExist = async (collection) => {
     }
 };
 
-const prepareForInsertion = async (db, isForced) => {
+const prepareForInsertion = async (db: Db, isForced: boolean) => {
     const collection = db.collection(collectionName);
 
     if (await checkIfDataExist(collection)) {
@@ -73,7 +74,7 @@ const prepareForInsertion = async (db, isForced) => {
     }
 };
 
-const applySchemaValidation = async (db, collectionName, schema) => {
+const applySchemaValidation = async (db: Db, collectionName: string, schema: {}) => {
     try {
         await db.command({
             collMod: collectionName,
@@ -87,7 +88,7 @@ const applySchemaValidation = async (db, collectionName, schema) => {
     }
 };
 
-const insertCategories = async (db, categories) => {
+const insertCategories = async (db: Db, categories: {}[]) => {
     try {
         const result = await db.collection(collectionName).insertMany(categories);
         console.log(`${result.insertedCount} categories inserted successfully`);
@@ -97,7 +98,7 @@ const insertCategories = async (db, categories) => {
     }
 };
 
-const seedCategories = async (db, isForced = false) => {
+const seedCategories = async (db: Db, isForced = false) => {
     await checkCategoriesCollection(db);
     await applySchemaValidation(db, collectionName, schema);
     await prepareForInsertion(db, isForced);

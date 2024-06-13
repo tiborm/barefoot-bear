@@ -3,11 +3,14 @@
 install:
 	npm install
 
+build:
+	npm run build
+
 run:
-	node index.js
+	npm start
 
 run-forced-seed:
-	node index.js --forced-seed
+	FORCED_SEED=true npm start
 
 clean:
-	rm -rf node_modules
+	rm -rf node_modules dist

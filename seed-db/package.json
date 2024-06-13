@@ -2,14 +2,19 @@
   "name": "seed-data",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "build": "npx tsc",
+    "start": "node ./dist/index.js",
+    "start-forced": "node ./dist/index.js -- --forced-seed"
   },
   "author": "Tibor Meller",
   "license": "MIT",
   "description": "",
   "dependencies": {
     "mongodb": "^6.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "typescript": "^5.4.5"
   }
 }
