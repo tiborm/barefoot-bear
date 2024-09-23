@@ -1,5 +1,5 @@
-import { dbConnect, dbDisconnect, db } from "./connect";
-import { seedCategories } from "./categories";
+import { dbConnect, dbDisconnect, db } from "./src/connect";
+import { seedCategories } from "./src/categories";
 
 const forceSeed = process.env.FORCED_SEED === "true" || process.argv.slice(2).includes("--forced-seed") || false;
 

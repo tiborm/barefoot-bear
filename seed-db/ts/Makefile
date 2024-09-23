@@ -6,7 +6,7 @@ install:
 build:
 	npm run build
 
-run:
+run: build
 	npm start
 
 run-forced-seed:
