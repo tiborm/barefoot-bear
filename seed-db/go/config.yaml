@@ -1,0 +1,10 @@
+json_folder: ../json/
+
+categories_folder: 
+categories_collection: categories
+
+products_folder: products/
+products_collection: products
+
+inventory_folder: inventory/
+inventory_collection: inventory

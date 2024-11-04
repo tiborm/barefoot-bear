@@ -28,7 +28,7 @@ const isForced = process.env.FORCED_SEED === "true" || process.argv.slice(2).inc
     await prepareForInsertion(db, collectionName, isForced);
     await insertJSONDocs(db, collectionName, extractedProducts);
 
-    collectionName = "inventories";
+    collectionName = "inventory";
     await checkCollection(db, collectionName);
     await applySchemaValidation(db, collectionName, inventorySchema);
     await prepareForInsertion(db, collectionName, isForced);

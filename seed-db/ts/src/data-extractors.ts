@@ -1,4 +1,4 @@
-export const extractProducts = (productsByCategoryJSONs: { results: [] }[]) => {
+export const extractProducts = (productsByCategoryJSONs: { results: []; }[]) => {
     const extractedProducts: {}[] = [];
     productsByCategoryJSONs.forEach(products => {
         products.results.forEach((result: { items: []; }) => {
@@ -12,8 +12,8 @@ export const extractProducts = (productsByCategoryJSONs: { results: [] }[]) => {
     });
 
     return extractedProducts;
-}
+};
 
-export const extractInventory = (inventoryByProductJSON: { data: {}[] }[]) => {
+export const extractInventory = (inventoryByProductJSON: { data: {}[]; }[]) => {
     return inventoryByProductJSON.map(inventory => inventory.data).flat();
-}
+};

@@ -1,9 +1,9 @@
 import { MongoClient } from 'mongodb';
 
 const dbName = 'barefoot-bear';  // TODO workname of the project -> process.env.DB_NAME
-const mongoUrl = "mongodb://root:example@localhost:27017"; // TODO -> process.env.MONGO_URL;
+const mongoUri = "mongodb://root:example@localhost:27017"; // TODO -> process.env.MONGO_URI;
 
-const mongoClient = new MongoClient(mongoUrl);
+const mongoClient = new MongoClient(mongoUri);
 
 const dbConnect = async () => {
     try {
