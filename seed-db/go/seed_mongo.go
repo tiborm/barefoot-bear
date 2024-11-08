@@ -3,14 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v2"
 )
 
@@ -40,6 +43,7 @@ type JsonFolderToCollection struct {
 	JsonFolder string
 	Collection string
 	Extractor  func(*interface{}) []*interface{}
+	Index      string
 }
 
 func loadConfig(configFile string) Config {
@@ -74,9 +78,9 @@ func main() {
 	defer disconnectFromDB(dbClient)
 
 	sources := []JsonFolderToCollection{
-		{config.JsonFolder + config.CategoriesFolder, config.CategoriesCollection, extractCategories},
-		{config.JsonFolder + config.ProductsFolder, config.ProductsCollection, extractProducts},
-		{config.JsonFolder + config.InventoryFolder, config.InventoryCollection, extractInventory},
+		{config.JsonFolder + config.CategoriesFolder, config.CategoriesCollection, extractCategories, "id"},
+		{config.JsonFolder + config.ProductsFolder, config.ProductsCollection, extractProducts, "id"},
+		{config.JsonFolder + config.InventoryFolder, config.InventoryCollection, extractInventory, ""},
 	}
 
 	for _, source := range sources {
@@ -96,7 +100,7 @@ func main() {
 			}
 		}
 
-		insertManyDocuments(dbClient, source.Collection, jsonExtract)
+		insertManyDocuments(dbClient, source.Collection, jsonExtract, source.Index)
 	}
 
 	fmt.Println("Seeding completed!")
@@ -170,14 +174,14 @@ func extractInventory(inventoryByProductJSON *interface{}) []*interface{} {
 }
 
 func dereferenceSlice(slice []*interface{}) []interface{} {
-    var result []interface{}
-    for _, item := range slice {
-        result = append(result, *item)
-    }
-    return result
+	var result []interface{}
+	for _, item := range slice {
+		result = append(result, *item)
+	}
+	return result
 }
 
-func insertManyDocuments(client *mongo.Client, collectionName string, documents []*interface{}) {
+func insertManyDocuments(client *mongo.Client, collectionName string, documents []*interface{}, indexField string) {
 	collection := client.Database(MONGO_DB).Collection(collectionName)
 
 	if FORCED_SEEDING {
@@ -188,18 +192,57 @@ func insertManyDocuments(client *mongo.Client, collectionName string, documents 
 		fmt.Printf("Collection %s dropped due to forced seeding\n", collectionName)
 	}
 
-	_, err := collection.InsertMany(context.Background(), dereferenceSlice(documents))
+	if indexField != "" {
+		createIndexes(collection, indexField, true)
+	}
+		
+	var dc int
+
+	// If ordering false, the insertMany() method will not stop the insertion
+	// of documents if duplicated items violate the unique index constraint.
+	opts := options.InsertMany().SetOrdered(false)
+
+	_, err := collection.InsertMany(context.Background(), dereferenceSlice(documents), opts)
 	if err != nil {
-		log.Fatalf("Failed to insert documents into MongoDB: %v\n", err)
+		var bulkWriteErrors mongo.BulkWriteException
+		// Check if the error is a bulk write error like duplicate key
+		// and treat it accordingly
+		if errors.As(err, &bulkWriteErrors) {
+			for _, writeError := range bulkWriteErrors.WriteErrors {
+				fmt.Printf("Bulk write error: %v\n", writeError)
+			}
+			dc += len(bulkWriteErrors.WriteErrors)
+		} else {
+			// Any other error is fatal
+			log.Fatalf("Failed to insert documents into MongoDB: %v\n", err)
+		}
 	}
 
+	fmt.Printf("Documents count: %d\n", len(documents))
+	fmt.Printf("Documents failed to insert: %d\n", dc)
+
 	fmt.Printf("Documents successfully loaded into MongoDB collection: %s\n\n", collectionName)
+}
+
+func createIndexes(collection *mongo.Collection, fieldName string, isUnique bool) {
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: fieldName, Value: 1}},
+		Options: options.Index().SetUnique(isUnique),
+	}
+
+	indexName, err := collection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		fmt.Printf("Failed to create index: %v\n", err)
+	}
+
+	fmt.Printf("Index created: %s\n", indexName)
 }
 
 func connectToDB() *mongo.Client {
 	fmt.Printf("Connecting to MongoDB: %s\n", MONGO_URI)
 	// Set up the MongoDB client options
-	clientOptions := options.Client().ApplyURI(MONGO_URI)
+	wc := writeconcern.W1()
+	clientOptions := options.Client().ApplyURI(MONGO_URI).SetWriteConcern(wc)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(context.Background(), clientOptions)
