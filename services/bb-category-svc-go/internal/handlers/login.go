@@ -1,14 +1,13 @@
-package main
+package handlers
 
 import (
-	"fmt"
 	"net/http"
 
-	"math/rand"
-
+	"golang.org/x/exp/rand"
 	"golang.org/x/oauth2"
 )
 
+// TODO refactor this to use a config file or environment variables
 var (
 	oauthConfig = &oauth2.Config{
         RedirectURL:  "http://localhost:5491/callback",
@@ -33,27 +32,15 @@ func RandStringBytes(n int) string {
     return string(b)
 }
 
-func main() {
-	oauthStateString = RandStringBytes(64)
-	fmt.Println(oauthStateString)
-
-    http.HandleFunc("/", handleMain)
-    http.HandleFunc("/login", handleGoogleLogin)
-    http.HandleFunc("/callback", handleGoogleCallback)
-    fmt.Println("Server started at http://localhost:5491")
-    http.ListenAndServe(":5491", nil)
+func Login() {
+	oauthStateString = RandStringBytes(16)
 }
 
-func handleMain(w http.ResponseWriter, r *http.Request) {
-    var htmlIndex = `<html><body><a href="/login">Google Log In</a></body></html>`
-    w.Write([]byte(htmlIndex))
-}
-
-func handleGoogleLogin(w http.ResponseWriter, r *http.Request) {
+func HandleGoogleLogin(w http.ResponseWriter, r *http.Request) {
     URL := oauthConfig.AuthCodeURL(oauthStateString, oauth2.AccessTypeOffline)
     http.Redirect(w, r, URL, http.StatusTemporaryRedirect)
 }
 
-func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
+func HandleGoogleCallback(w http.ResponseWriter, r *http.Request) {
     w.Write([]byte("you did great"))
 }
