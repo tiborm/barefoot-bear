@@ -1,0 +1,50 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug nodejs-db-seed",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/nodejs-db-seed/ts/dist/index.js",
+            "cwd": "${workspaceFolder}/nodejs-db-seed",
+        },
+        {
+            "name": "Debugt Transplant",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/fetch/fetch.go",
+            "env": {
+                "CATEGORY_URL": "https://www.ikea.com/at/en/meta-data/navigation/catalog-products-slim.json",
+                "PRODUCT_SEARCH_URL": "https://sik.search.blue.cdtapps.com/at/en/search?c=listaf&v=20240110",
+                "INVENTORY_URL": "https://api.ingka.ikea.com/cia/availabilities/ru/at?itemNos=",
+                "FORCE_FETCH": "",
+                "FETCH_SLEEP_TIME": "0.2",
+                // https://api.ingka.ikea.com/guest/token POST payload {"retailUnit":"at"}
+                // check network tab in browser
+                "CLIENT_TOKEN": "b6c117e5-ae61-4ef5-b4cc-e0b1e37f0631",
+            },
+        },
+        {
+            "name": "Debugt Go DB Seeder",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/seed/seed_mongo.go",
+            "env": {
+            },
+        },
+        {
+            "name": "Launch bb-catalog-svc",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/svc_category/svc_category.go",
+            "env": {},
+            "args": []
+        }
+    ]
+}
