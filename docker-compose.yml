@@ -1,4 +1,14 @@
 services:
+  postgres:
+    image: postgres:15
+    volumes:
+      - postgres-data:/data/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: barefoot-bear
   mongo:
     image: mongo:4.4
     volumes:
@@ -18,6 +28,7 @@ services:
     environment:
       MONGO_URI: mongodb://root:example@mongo:27017/categories
     depends_on:
+      - postgres
       - mongo
 
   bb-gui:
@@ -37,4 +48,4 @@ services:
 
 volumes:
   mongo-data:
-  
+  postgres-data:
