@@ -34,8 +34,8 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/seed/seed_mongo.go",
-            "env": {
-            },
+            "env": {},
+            "args": []
         },
         {
             "name": "Launch bb-catalog-svc",

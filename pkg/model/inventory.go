@@ -36,7 +36,7 @@ type ItemKey struct {
 	ItemType string `json:"itemType"`
 }
 
-type InventoryData struct {
+type Inventory struct {
 	IsInCashAndCarryRange bool             `json:"isInCashAndCarryRange"`
 	IsInHomeDeliveryRange bool             `json:"isInHomeDeliveryRange"`
 	AvailableStocks       []AvailableStock `json:"availableStocks"`
@@ -45,6 +45,6 @@ type InventoryData struct {
 }
 
 type InventoryJsonResponse struct {
-	Availabilities interface{}     `json:"availabilities,omitempty"`
-	Data           []InventoryData `json:"data"`
+	Availabilities interface{} `json:"availabilities,omitempty"`
+	Data           []Inventory `json:"data"`
 }

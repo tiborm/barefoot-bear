@@ -1,6 +1,6 @@
 package model
 
-type ProductResponse struct {
+type ProductJsonResponse struct {
 	UserGroups             []interface{}    `json:"usergroups"`
 	Results                []ProductResults `json:"results"`
 	TestActivationTriggers interface{}      `json:"testActivationTriggers"`
@@ -8,22 +8,22 @@ type ProductResponse struct {
 }
 
 type ProductResults struct {
-	Component string        `json:"component"`
-	ViewMode  string        `json:"viewMode"`
-	Filters   []interface{} `json:"filters"`
-	Items     []Product     `json:"items"`
+	Component string           `json:"component"`
+	ViewMode  string           `json:"viewMode"`
+	Filters   []interface{}    `json:"filters"`
+	Items     []ProductWrapper `json:"items"`
+}
+
+type ProductWrapper struct {
+	Metadata     string        `json:"metadata"`
+	Product      Product       `json:"product"`
+	Type         string        `json:"type"`
+	Label        string        `json:"label"`
+	ActionTokens []interface{} `json:"actionTokens"`
+	IsBreakout   bool          `json:"isBreakout"`
 }
 
 type Product struct {
-	Metadata     string         `json:"metadata"`
-	Product      ProductDetails `json:"product"`
-	Type         string         `json:"type"`
-	Label        string         `json:"label"`
-	ActionTokens []interface{}  `json:"actionTokens"`
-	IsBreakout   bool           `json:"isBreakout"`
-}
-
-type ProductDetails struct {
 	Name                     string               `json:"name"`
 	TypeName                 string               `json:"typeName"`
 	ItemMeasureReferenceText string               `json:"itemMeasureReferenceText"`

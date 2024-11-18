@@ -7,3 +7,5 @@ type Category struct {
     IM   string `json:"im,omitempty"`
     Subs []Category `json:"subs,omitempty"`
 }
+
+type CategoryJsonResponse []Category

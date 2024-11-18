@@ -24,6 +24,7 @@ func StartServer(
 	handler := middlewares.AddMiddlewares(mux)
 
 	fmt.Println("Server started at http://localhost:5491")
+	// TODO add a config for the port, env variable or a flag
 	err := http.ListenAndServe(":5491", handler)
 	if err != nil {
 		logger.Fatalf("Server failed to start: %v", err)

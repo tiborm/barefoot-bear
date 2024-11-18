@@ -58,7 +58,7 @@ func (pf ProductFetcher) Fetch(id string, params FetchParams) ([]byte, error) {
 }
 
 func (pf ProductFetcher) GetIDs(rawJson []byte) ([]string, error) {
-	var productsResponse model.ProductResponse
+	var productsResponse model.ProductJsonResponse
 	err := json.Unmarshal(rawJson, &productsResponse)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling products: %w", err)

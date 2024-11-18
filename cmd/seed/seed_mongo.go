@@ -15,6 +15,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v2"
+
+	"github.com/tiborm/barefoot-bear/pkg/model"
 )
 
 // TODO check if you can use json model from cli code to validate the json file
@@ -39,11 +41,20 @@ type Config struct {
 	InventoryCollection string `yaml:"inventory_collection"`
 }
 
-type JsonFolderToCollection struct {
-	JsonFolder string
-	Collection string
-	Extractor  func(*interface{}) []*interface{}
-	Index      string
+type DataModel interface {
+	model.Category | model.Product | model.Inventory
+}
+type JsonResponseStruct interface {
+	model.CategoryJsonResponse | model.ProductJsonResponse | model.InventoryJsonResponse
+}
+
+type JsonFolderToCollection[J JsonResponseStruct, D DataModel] struct {
+	JsonFolder         string
+	Collection         string
+	Extractor          func(*J) []*D
+	IndexField         string
+	JsonResponseStruct *J
+	DataModel          *[]D
 }
 
 func loadConfig(configFile string) Config {
@@ -74,36 +85,88 @@ func init() {
 }
 
 func main() {
+	// sources := []JsonFolderToCollection[JsonResponseStruct, DataModel]{
+	// 	{
+	// 		config.JsonFolder + config.CategoriesFolder,
+	// 		config.CategoriesCollection,
+	// 		extractCategories,
+	// 		"id",
+	// 		&model.CategoryJsonResponse{},
+	// 		&[]model.Category{},
+	// 	},
+	// 	{
+	// 		config.JsonFolder + config.ProductsFolder,
+	// 		config.ProductsCollection,
+	// 		extractProducts,
+	// 		"id",
+	// 		&model.ProductJsonResponse{},
+	// 		&[]model.Product{},
+	// 	},
+	// 	{
+	// 		config.JsonFolder + config.InventoryFolder,
+	// 		config.InventoryCollection,
+	// 		extractInventory,
+	// 		"",
+	// 		&model.InventoryJsonResponse{},
+	// 		&[]model.Inventory{},
+	// 	},
+	// }
+
+	categorySource := JsonFolderToCollection[model.CategoryJsonResponse, model.Category]{
+		config.JsonFolder + config.CategoriesFolder,
+		config.CategoriesCollection,
+		extractCategories,
+		"id",
+		&model.CategoryJsonResponse{},
+		&[]model.Category{},
+	}
+
+	productSource := JsonFolderToCollection[model.ProductJsonResponse, model.Product]{
+		config.JsonFolder + config.ProductsFolder,
+		config.ProductsCollection,
+		extractProducts,
+		"id",
+		&model.ProductJsonResponse{},
+		&[]model.Product{},
+	}
+
+	inventorySource := JsonFolderToCollection[model.InventoryJsonResponse, model.Inventory]{
+		config.JsonFolder + config.InventoryFolder,
+		config.InventoryCollection,
+		extractInventory,
+		"",
+		&model.InventoryJsonResponse{},
+		&[]model.Inventory{},
+	}
+
+	parseAndSeed(categorySource)
+	parseAndSeed(productSource)
+	parseAndSeed(inventorySource)
+
+	fmt.Println("Seeding completed!")
+}
+
+func parseAndSeed[J JsonResponseStruct, D DataModel](source JsonFolderToCollection[J, D]) {
+	files := readFilenamesFromFolder(source.JsonFolder)
+
+	var jsonExtract []*D
+
+	for _, file := range files {
+		jsonDoc, err := readJsonFile[J](source.JsonFolder + file)
+		if err != nil {
+			fmt.Printf("Failed to read JSON file: %s %v", file, err)
+			continue
+		}
+
+		if source.Extractor != nil {
+			jsonExtract = append(jsonExtract, source.Extractor(jsonDoc)...)
+		}
+	}
+
 	dbClient := connectToDB()
 	defer disconnectFromDB(dbClient)
 
-	sources := []JsonFolderToCollection{
-		{config.JsonFolder + config.CategoriesFolder, config.CategoriesCollection, extractCategories, "id"},
-		{config.JsonFolder + config.ProductsFolder, config.ProductsCollection, extractProducts, "id"},
-		{config.JsonFolder + config.InventoryFolder, config.InventoryCollection, extractInventory, ""},
-	}
-
-	for _, source := range sources {
-		files := readFilenamesFromFolder(source.JsonFolder)
-
-		var jsonExtract []*interface{}
-
-		for _, file := range files {
-			jsonDoc, err := readJsonFile(source.JsonFolder + file)
-			if err != nil {
-				fmt.Printf("Failed to read JSON file: %s %v", file, err)
-				continue
-			}
-
-			if source.Extractor != nil {
-				jsonExtract = append(jsonExtract, source.Extractor(jsonDoc)...)
-			}
-		}
-
-		insertManyDocuments(dbClient, source.Collection, jsonExtract, source.Index)
-	}
-
-	fmt.Println("Seeding completed!")
+	insertManyDocuments(dbClient, source.Collection, jsonExtract, source.IndexField)
 }
 
 func readFilenamesFromFolder(folderPath string) []string {
@@ -122,13 +185,13 @@ func readFilenamesFromFolder(folderPath string) []string {
 	return filenames
 }
 
-func readJsonFile(jsonFile string) (*interface{}, error) {
+func readJsonFile[J JsonResponseStruct](jsonFile string) (*J, error) {
 	file, err := os.ReadFile(jsonFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %s %v", jsonFile, err)
 	}
 
-	var result *interface{}
+	var result *J
 	if err := json.Unmarshal(file, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode: %s %v", jsonFile, err)
 	}
@@ -136,52 +199,57 @@ func readJsonFile(jsonFile string) (*interface{}, error) {
 	return result, nil
 }
 
-func extractCategories(categoriesJSON *interface{}) []*interface{} {
-	var extract []*interface{}
+func extractCategories(categoriesJSON *model.CategoryJsonResponse) []*model.Category {
+	var extract []*model.Category
 
-	for _, c := range (*categoriesJSON).([]interface{}) {
+	for _, c := range *categoriesJSON {
 		extract = append(extract, &c)
 	}
 
 	return extract
 }
 
-func extractProducts(productsByCategoryJSONs *interface{}) []*interface{} {
-	var extract []*interface{}
+func extractProducts(productsByCategoryJSONs *model.ProductJsonResponse) []*model.Product {
+	var extract []*model.Product
 
-	rs := (*productsByCategoryJSONs).(map[string]interface{})["results"].([]interface{})
+	rs := productsByCategoryJSONs.Results
 	for _, r := range rs {
-		is := r.(map[string]interface{})["items"].([]interface{})
+		is := r.Items
 		for _, pi := range is {
-			product := pi.(map[string]interface{})["product"]
-			if product != nil {
-				extract = append(extract, &product)
-			}
+			extract = append(extract, &pi.Product)
 		}
 	}
 
 	return extract
 }
 
-func extractInventory(inventoryByProductJSON *interface{}) []*interface{} {
-	var inventoryData []*interface{}
+func extractInventory(inventoryByProductJSON *model.InventoryJsonResponse) []*model.Inventory {
+	var inventoryData []*model.Inventory
 
-	for _, data := range (*inventoryByProductJSON).(map[string]interface{})["data"].([]interface{}) {
+	for _, data := range inventoryByProductJSON.Data {
 		inventoryData = append(inventoryData, &data)
 	}
 
 	return inventoryData
 }
 
-func dereferenceSlice(slice []*interface{}) []interface{} {
-	var result []interface{}
+func dereferenceSlice[D DataModel](slice []*D) []D {
+	var result []D
 	for _, item := range slice {
 		result = append(result, *item)
 	}
 	return result
 }
 
-func insertManyDocuments(client *mongo.Client, collectionName string, documents []*interface{}, indexField string) {
+func toInterfaceSlice[D any](typedSlice []*D) []interface{} {
+	interfaceSlice := make([]interface{}, len(typedSlice))
+	for i, v := range typedSlice {
+		interfaceSlice[i] = *v
+	}
+	return interfaceSlice
+}
+
+func insertManyDocuments[D DataModel](client *mongo.Client, collectionName string, documents []*D, indexField string) {
 	collection := client.Database(MONGO_DB).Collection(collectionName)
 
 	if FORCED_SEEDING {
@@ -195,14 +263,14 @@ func insertManyDocuments(client *mongo.Client, collectionName string, documents 
 	if indexField != "" {
 		createIndexes(collection, indexField, true)
 	}
-		
+
 	var dc int
 
 	// If ordering false, the insertMany() method will not stop the insertion
 	// of documents if duplicated items violate the unique index constraint.
 	opts := options.InsertMany().SetOrdered(false)
 
-	_, err := collection.InsertMany(context.Background(), dereferenceSlice(documents), opts)
+	_, err := collection.InsertMany(context.Background(), toInterfaceSlice(documents), opts)
 	if err != nil {
 		var bulkWriteErrors mongo.BulkWriteException
 		// Check if the error is a bulk write error like duplicate key
