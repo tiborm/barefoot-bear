@@ -1,4 +1,4 @@
-json_folder: ../../seed-data/
+json_folder: ../../../seed-data/
 
 categories_folder: 
 categories_collection: categories

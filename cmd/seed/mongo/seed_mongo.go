@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +15,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"gopkg.in/yaml.v2"
 
+	"github.com/tiborm/barefoot-bear/internal/seed/fileops"
+	"github.com/tiborm/barefoot-bear/internal/seed/jsonops"
 	"github.com/tiborm/barefoot-bear/pkg/model"
 )
 
@@ -39,22 +40,6 @@ type Config struct {
 
 	InventoryFolder     string `yaml:"inventory_folder"`
 	InventoryCollection string `yaml:"inventory_collection"`
-}
-
-type DataModel interface {
-	model.Category | model.Product | model.Inventory
-}
-type JsonResponseStruct interface {
-	model.CategoryJsonResponse | model.ProductJsonResponse | model.InventoryJsonResponse
-}
-
-type JsonFolderToCollection[J JsonResponseStruct, D DataModel] struct {
-	JsonFolder         string
-	Collection         string
-	Extractor          func(*J) []*D
-	IndexField         string
-	JsonResponseStruct *J
-	DataModel          *[]D
 }
 
 func loadConfig(configFile string) Config {
@@ -85,58 +70,31 @@ func init() {
 }
 
 func main() {
-	// sources := []JsonFolderToCollection[JsonResponseStruct, DataModel]{
-	// 	{
-	// 		config.JsonFolder + config.CategoriesFolder,
-	// 		config.CategoriesCollection,
-	// 		extractCategories,
-	// 		"id",
-	// 		&model.CategoryJsonResponse{},
-	// 		&[]model.Category{},
-	// 	},
-	// 	{
-	// 		config.JsonFolder + config.ProductsFolder,
-	// 		config.ProductsCollection,
-	// 		extractProducts,
-	// 		"id",
-	// 		&model.ProductJsonResponse{},
-	// 		&[]model.Product{},
-	// 	},
-	// 	{
-	// 		config.JsonFolder + config.InventoryFolder,
-	// 		config.InventoryCollection,
-	// 		extractInventory,
-	// 		"",
-	// 		&model.InventoryJsonResponse{},
-	// 		&[]model.Inventory{},
-	// 	},
-	// }
-
-	categorySource := JsonFolderToCollection[model.CategoryJsonResponse, model.Category]{
-		config.JsonFolder + config.CategoriesFolder,
-		config.CategoriesCollection,
-		extractCategories,
-		"id",
-		&model.CategoryJsonResponse{},
-		&[]model.Category{},
+	categorySource := jsonops.JsonFolderToCollection[model.CategoryJsonResponse, model.Category]{
+		JsonFolder: config.JsonFolder + config.CategoriesFolder,
+		Collection: config.CategoriesCollection,
+		Extractor: jsonops.ExtractCategories,
+		IndexField: "id",
+		JsonResponseStruct: &model.CategoryJsonResponse{},
+		DataModel: &[]model.Category{},
 	}
 
-	productSource := JsonFolderToCollection[model.ProductJsonResponse, model.Product]{
-		config.JsonFolder + config.ProductsFolder,
-		config.ProductsCollection,
-		extractProducts,
-		"id",
-		&model.ProductJsonResponse{},
-		&[]model.Product{},
+	productSource := jsonops.JsonFolderToCollection[model.ProductJsonResponse, model.Product]{
+		JsonFolder: config.JsonFolder + config.ProductsFolder,
+		Collection: config.ProductsCollection,
+		Extractor: jsonops.ExtractProducts,
+		IndexField: "id",
+		JsonResponseStruct: &model.ProductJsonResponse{},
+		DataModel: &[]model.Product{},
 	}
 
-	inventorySource := JsonFolderToCollection[model.InventoryJsonResponse, model.Inventory]{
-		config.JsonFolder + config.InventoryFolder,
-		config.InventoryCollection,
-		extractInventory,
-		"",
-		&model.InventoryJsonResponse{},
-		&[]model.Inventory{},
+	inventorySource := jsonops.JsonFolderToCollection[model.InventoryJsonResponse, model.Inventory]{
+		JsonFolder: config.JsonFolder + config.InventoryFolder,
+		Collection: config.InventoryCollection,
+		Extractor: jsonops.ExtractInventory,
+		IndexField: "",
+		JsonResponseStruct: &model.InventoryJsonResponse{},
+		DataModel: &[]model.Inventory{},
 	}
 
 	parseAndSeed(categorySource)
@@ -146,13 +104,13 @@ func main() {
 	fmt.Println("Seeding completed!")
 }
 
-func parseAndSeed[J JsonResponseStruct, D DataModel](source JsonFolderToCollection[J, D]) {
-	files := readFilenamesFromFolder(source.JsonFolder)
+func parseAndSeed[J jsonops.JsonResponseStruct, D jsonops.DataModel](source jsonops.JsonFolderToCollection[J, D]) {
+	files := fileops.ReadFilenamesFromFolder(source.JsonFolder)
 
 	var jsonExtract []*D
 
 	for _, file := range files {
-		jsonDoc, err := readJsonFile[J](source.JsonFolder + file)
+		jsonDoc, err := fileops.ReadJsonFile[J](source.JsonFolder + file)
 		if err != nil {
 			fmt.Printf("Failed to read JSON file: %s %v", file, err)
 			continue
@@ -169,71 +127,7 @@ func parseAndSeed[J JsonResponseStruct, D DataModel](source JsonFolderToCollecti
 	insertManyDocuments(dbClient, source.Collection, jsonExtract, source.IndexField)
 }
 
-func readFilenamesFromFolder(folderPath string) []string {
-	files, err := os.ReadDir(folderPath)
-	if err != nil {
-		log.Fatalf("Failed to read directory: %v", err)
-	}
-
-	var filenames []string
-	for _, file := range files {
-		if !file.IsDir() {
-			filenames = append(filenames, file.Name())
-		}
-	}
-
-	return filenames
-}
-
-func readJsonFile[J JsonResponseStruct](jsonFile string) (*J, error) {
-	file, err := os.ReadFile(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %s %v", jsonFile, err)
-	}
-
-	var result *J
-	if err := json.Unmarshal(file, &result); err != nil {
-		return nil, fmt.Errorf("failed to decode: %s %v", jsonFile, err)
-	}
-
-	return result, nil
-}
-
-func extractCategories(categoriesJSON *model.CategoryJsonResponse) []*model.Category {
-	var extract []*model.Category
-
-	for _, c := range *categoriesJSON {
-		extract = append(extract, &c)
-	}
-
-	return extract
-}
-
-func extractProducts(productsByCategoryJSONs *model.ProductJsonResponse) []*model.Product {
-	var extract []*model.Product
-
-	rs := productsByCategoryJSONs.Results
-	for _, r := range rs {
-		is := r.Items
-		for _, pi := range is {
-			extract = append(extract, &pi.Product)
-		}
-	}
-
-	return extract
-}
-
-func extractInventory(inventoryByProductJSON *model.InventoryJsonResponse) []*model.Inventory {
-	var inventoryData []*model.Inventory
-
-	for _, data := range inventoryByProductJSON.Data {
-		inventoryData = append(inventoryData, &data)
-	}
-
-	return inventoryData
-}
-
-func dereferenceSlice[D DataModel](slice []*D) []D {
+func dereferenceSlice[D jsonops.DataModel](slice []*D) []D {
 	var result []D
 	for _, item := range slice {
 		result = append(result, *item)
@@ -249,7 +143,7 @@ func toInterfaceSlice[D any](typedSlice []*D) []interface{} {
 	return interfaceSlice
 }
 
-func insertManyDocuments[D DataModel](client *mongo.Client, collectionName string, documents []*D, indexField string) {
+func insertManyDocuments[D jsonops.DataModel](client *mongo.Client, collectionName string, documents []*D, indexField string) {
 	collection := client.Database(MONGO_DB).Collection(collectionName)
 
 	if FORCED_SEEDING {
