@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/tiborm/barefoot-bear/pkg/model"
+	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
 type Getter interface {

@@ -17,7 +17,7 @@ import (
 
 	"github.com/tiborm/barefoot-bear/internal/seed/fileops"
 	"github.com/tiborm/barefoot-bear/internal/seed/jsonops"
-	"github.com/tiborm/barefoot-bear/pkg/model"
+	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
 // TODO check if you can use json model from cli code to validate the json file

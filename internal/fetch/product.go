@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tiborm/barefoot-bear/pkg/model"
+	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
 type Sleeper interface {

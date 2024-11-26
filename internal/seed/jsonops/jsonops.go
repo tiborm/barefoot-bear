@@ -1,6 +1,6 @@
 package jsonops
 
-import "github.com/tiborm/barefoot-bear/pkg/model"
+import "github.com/tiborm/barefoot-bear/internal/model"
 
 type DataModel interface {
 	model.Category | model.Product | model.Inventory
@@ -19,13 +19,29 @@ type JsonFolderToCollection[J JsonResponseStruct, D DataModel] struct {
 	DataModel          *[]D
 }
 
-func ExtractCategories(categoriesJSON *model.CategoryJsonResponse) []*model.Category {
+func flattenCategoryTree(c []model.Category) []*model.Category {
+	var extract []*model.Category
+
+	for _, category := range c {
+		extract = append(extract, &category)
+		extract = append(extract, flattenCategoryTree(category.Subs)...)
+	}
+
+	return extract
+}
+
+func ExtractCategories(categoriesJSON *model.CategoryJsonResponse) []*model.Category{
 	var extract []*model.Category
 
 	for _, c := range *categoriesJSON {
 		extract = append(extract, &c)
+		extract = append(extract, flattenCategoryTree(c.Subs)...)
 	}
 
+	for _, e := range extract {
+		e.Subs = nil
+	}
+	
 	return extract
 }
 

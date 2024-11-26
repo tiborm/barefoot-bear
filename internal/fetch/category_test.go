@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/tiborm/barefoot-bear/pkg/model"
+	"github.com/tiborm/barefoot-bear/internal/model"
 )
 
 func TestExtractingSubCategories(t *testing.T) {
